@@ -9,21 +9,19 @@
   <link rel="stylesheet" href="attendance.css" />
 </head>
 <body>
-  <header>
-    <nav class="navbar">
-      <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
-      <ul class="nav-links" id="navLinks">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="index.html#projects">Projects</a></li>
-        <li><a href="attendance.html" class="active">Attendance</a></li>
-        <li><a href="settings.html">Settings</a></li>
-      </ul>
-      <div class="nav-actions">
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
-        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
-      </div>
-    </nav>
-  </header>
+  <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+
+  <nav class="sidebar" id="siteNav">
+    <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="attendance.html" class="active">Attendance</a></li>
+      <li><a href="settings.html">Settings</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
+    </div>
+  </nav>
 
   <main>
     <section class="attendance">
@@ -46,7 +44,6 @@
             <span>Add student</span>
             <div class="inline">
               <input type="text" id="studentName" placeholder="Student name" autocomplete="off" />
-              <input type="text" id="studentId" placeholder="Student ID (optional)" autocomplete="off" />
               <button type="button" id="addStudent" class="btn">Add</button>
             </div>
           </div>

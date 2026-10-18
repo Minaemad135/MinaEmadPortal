@@ -44,10 +44,6 @@
   width: 160px;
 }
 
-#studentId {
-  width: 135px;
-}
-
 #specialDay {
   width: 145px;
 }
@@ -659,14 +655,6 @@
   border-radius: 4px;
   padding: 0 0.3rem;
   line-height: 1.5;
-}
-
-.student-sid {
-  font-size: 0.7rem;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .student-actions {

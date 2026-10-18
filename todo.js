@@ -8,12 +8,12 @@ const emptyState = document.getElementById("emptyState");
 const filtersEl = document.getElementById("filters");
 const clearCompletedBtn = document.getElementById("clearCompleted");
 const menuToggle = document.getElementById("menuToggle");
-const navLinks = document.getElementById("navLinks");
+const siteNav = document.getElementById("siteNav");
 
 let todos = loadTodos();
 let currentFilter = "all";
 
-menuToggle.addEventListener("click", () => navLinks.classList.toggle("open"));
+menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
 
 function loadTodos() {
   try {

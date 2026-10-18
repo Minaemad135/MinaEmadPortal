@@ -1,15 +1,15 @@
-const navLinks = document.getElementById("navLinks");
+const siteNav = document.getElementById("siteNav");
 const menuToggle = document.getElementById("menuToggle");
 const yearEl = document.getElementById("year");
 
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 menuToggle.addEventListener("click", () => {
-  navLinks.classList.toggle("open");
+  siteNav.classList.toggle("open");
 });
 
-navLinks.querySelectorAll("a").forEach((link) => {
-  link.addEventListener("click", () => navLinks.classList.remove("open"));
+siteNav.querySelectorAll("a").forEach((link) => {
+  link.addEventListener("click", () => siteNav.classList.remove("open"));
 });
 
 const sections = document.querySelectorAll("section");

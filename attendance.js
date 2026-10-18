@@ -3,7 +3,6 @@ const STORAGE_KEY = "mina.attendance";
 const yearInput = document.getElementById("attYear");
 const groupSelectEl = document.getElementById("groupSelect");
 const studentInput = document.getElementById("studentName");
-const studentIdInput = document.getElementById("studentId");
 const addStudentBtn = document.getElementById("addStudent");
 const weekdaysEl = document.getElementById("weekdays");
 const specialDayInput = document.getElementById("specialDay");
@@ -30,9 +29,9 @@ const modalBodyEl = document.getElementById("modalBody");
 const modalSaveBtn = document.getElementById("modalSave");
 
 const menuToggle = document.getElementById("menuToggle");
-const navLinks = document.getElementById("navLinks");
+const siteNav = document.getElementById("siteNav");
 
-menuToggle.addEventListener("click", () => navLinks.classList.toggle("open"));
+menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
 
 const DOW = [
   { value: 0, label: "Sun" },
@@ -74,7 +73,6 @@ function normStudent(s) {
   return {
     id: s.id || uid(),
     name: s.name || "",
-    studentId: s.studentId || "",
     code: /^\d{6}$/.test(s.code || "") ? s.code : "",
     notes: s.notes || "",
   };
@@ -209,12 +207,7 @@ function visibleColumns(g) {
 function visibleStudents(g) {
   const q = filterStudent.trim().toLowerCase();
   if (!q) return g.students;
-  return g.students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.studentId || "").toLowerCase().includes(q) ||
-      (s.code || "").includes(q)
-  );
+  return g.students.filter((s) => s.name.toLowerCase().includes(q) || (s.code || "").includes(q));
 }
 
 /* ---------- Modal ---------- */
@@ -306,12 +299,10 @@ function addStudent() {
   g.students.push({
     id: uid(),
     name,
-    studentId: studentIdInput.value.trim(),
     code: makeCode(allCodes()),
     notes: "",
   });
   studentInput.value = "";
-  studentIdInput.value = "";
   studentInput.focus();
   save();
   render();
@@ -336,12 +327,10 @@ function editStudent(id) {
     [
       { key: "name", label: "Name", value: s.name },
       { key: "code", label: "Code (auto-generated)", value: s.code, readonly: true },
-      { key: "studentId", label: "Student ID", value: s.studentId, placeholder: "optional" },
       { key: "notes", label: "Notes", value: s.notes, type: "textarea", placeholder: "optional" },
     ],
     (v) => {
       s.name = v.name || s.name;
-      s.studentId = v.studentId;
       s.notes = v.notes;
       save();
       closeModal();
@@ -445,7 +434,6 @@ function exportCsv() {
   const header = [
     "Student",
     "Code",
-    "Student ID",
     "Notes",
     ...cols.map((c) => {
       const info = specialInfo(g, c);
@@ -472,7 +460,7 @@ function exportCsv() {
       }
       return "";
     });
-    rows.push([s.name, s.code || "", s.studentId || "", s.notes || "", ...cells, present, absent].map(csvEscape).join(","));
+    rows.push([s.name, s.code || "", s.notes || "", ...cells, present, absent].map(csvEscape).join(","));
   });
 
   const csv = "\uFEFF" + rows.join("\r\n");
@@ -634,14 +622,6 @@ function renderTable(g, cols, students) {
     code.title = `Code ${student.code}`;
     meta.appendChild(code);
 
-    if (student.studentId) {
-      const sid = document.createElement("span");
-      sid.className = "student-sid";
-      sid.textContent = student.studentId;
-      sid.title = student.studentId;
-      meta.appendChild(sid);
-    }
-
     info.appendChild(meta);
 
     const actions = document.createElement("div");
@@ -783,12 +763,6 @@ tableWrap.addEventListener("click", (e) => {
 
 addStudentBtn.addEventListener("click", addStudent);
 studentInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addStudent();
-  }
-});
-studentIdInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     addStudent();
