@@ -6,6 +6,7 @@
   <title>Attendance | MinaEmad</title>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
   <link rel="stylesheet" href="attendance.css" />
 </head>
 <body>
@@ -16,6 +17,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
       <li><a href="attendance.html" class="active">Attendance</a></li>
+      <li><a href="todo.html">Todo</a></li>
       <li><a href="settings.html">Settings</a></li>
     </ul>
     <div class="nav-actions">
@@ -30,17 +32,17 @@
 
       <div class="panel toolbar">
         <div class="att-controls">
-          <label class="control">
+          <label class="control" data-perm="manageDays">
             <span>Class / group</span>
             <select id="groupSelect"></select>
           </label>
 
-          <label class="control">
+          <label class="control" data-perm="manageDays">
             <span>Year</span>
             <input type="number" id="attYear" min="2000" max="2100" />
           </label>
 
-          <div class="control">
+          <div class="control" data-perm="addStudent">
             <span>Add student</span>
             <div class="inline">
               <input type="text" id="studentName" placeholder="Student name" autocomplete="off" />
@@ -50,12 +52,12 @@
         </div>
 
         <div class="att-controls">
-          <div class="control">
+          <div class="control" data-perm="manageDays">
             <span>Attendance days (select one or more)</span>
             <div class="weekdays" id="weekdays"></div>
           </div>
 
-          <div class="control">
+          <div class="control" data-perm="manageDays">
             <span>Add special day</span>
             <div class="inline">
               <input type="date" id="specialDay" />
@@ -66,7 +68,7 @@
         </div>
       </div>
 
-      <div class="filter-bar">
+      <div class="filter-bar" data-perm="useFilters">
         <div class="fb-search">
           <svg class="fb-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
             <path
@@ -74,7 +76,7 @@
               d="M10 2a8 8 0 1 0 4.9 14.32l5.39 5.39 1.42-1.42-5.39-5.39A8 8 0 0 0 10 2Zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z"
             />
           </svg>
-          <input type="text" id="filterStudent" placeholder="Find student by name, ID or code" autocomplete="off" />
+          <input type="text" id="filterStudent" placeholder="Find student by name or code" autocomplete="off" />
         </div>
 
         <div class="fb-pill">
@@ -144,6 +146,7 @@
     </div>
   </div>
 
+  <script src="auth.js"></script>
   <script src="attendance.js"></script>
 </body>
 </html>

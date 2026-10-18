@@ -6,6 +6,7 @@
   <title>Todo List | MinaEmad</title>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
   <link rel="stylesheet" href="todo.css" />
 </head>
 <body>
@@ -16,6 +17,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
       <li><a href="attendance.html">Attendance</a></li>
+      <li><a href="todo.html" class="active">Todo</a></li>
       <li><a href="settings.html">Settings</a></li>
     </ul>
     <div class="nav-actions">
@@ -28,7 +30,7 @@
       <h1>Todo List</h1>
       <p class="subtitle">Tasks are saved in your browser (localStorage).</p>
 
-      <form id="todoForm" class="todo-form">
+      <form id="todoForm" class="todo-form" data-perm="addTodo">
         <input type="text" id="todoInput" placeholder="What needs to be done?" autocomplete="off" />
         <button type="submit" class="btn">Add</button>
       </form>
@@ -40,7 +42,7 @@
           <button class="filter" data-filter="active">Active</button>
           <button class="filter" data-filter="completed">Completed</button>
         </div>
-        <button id="clearCompleted" class="clear-btn">Clear completed</button>
+        <button id="clearCompleted" class="clear-btn" data-perm="deleteTodo">Clear completed</button>
       </div>
 
       <ul id="todoList" class="todo-list"></ul>
@@ -52,6 +54,7 @@
     <p><a href="index.html">&larr; Back to portfolio</a></p>
   </footer>
 
+  <script src="auth.js"></script>
   <script src="todo.js"></script>
 </body>
 </html>

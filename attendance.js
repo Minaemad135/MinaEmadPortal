@@ -1,4 +1,5 @@
 const STORAGE_KEY = "mina.attendance";
+const Auth = window.MinaAuth || { can: () => true };
 
 const yearInput = document.getElementById("attYear");
 const groupSelectEl = document.getElementById("groupSelect");
@@ -280,6 +281,7 @@ document.addEventListener("keydown", (e) => {
 /* ---------- Mutations: records & students ---------- */
 
 function cycle(studentId, iso) {
+  if (!Auth.can("markAttendance")) return;
   const g = activeGroup();
   if (!g.records[studentId]) g.records[studentId] = {};
   const current = g.records[studentId][iso];
@@ -293,6 +295,7 @@ function cycle(studentId, iso) {
 }
 
 function addStudent() {
+  if (!Auth.can("addStudent")) return;
   const name = studentInput.value.trim();
   if (!name) return;
   const g = activeGroup();
@@ -309,6 +312,7 @@ function addStudent() {
 }
 
 function removeStudent(id) {
+  if (!Auth.can("deleteStudent")) return;
   const g = activeGroup();
   const s = g.students.find((x) => x.id === id);
   if (s && !confirm(`Remove "${s.name}"?`)) return;
@@ -319,6 +323,7 @@ function removeStudent(id) {
 }
 
 function editStudent(id) {
+  if (!Auth.can("editStudent")) return;
   const g = activeGroup();
   const s = g.students.find((x) => x.id === id);
   if (!s) return;
@@ -340,6 +345,7 @@ function editStudent(id) {
 }
 
 function toggleWeekday(value) {
+  if (!Auth.can("manageDays")) return;
   const g = activeGroup();
   if (g.weekdays.includes(value)) {
     g.weekdays = g.weekdays.filter((v) => v !== value);
@@ -351,6 +357,7 @@ function toggleWeekday(value) {
 }
 
 function addSpecialDay() {
+  if (!Auth.can("manageDays")) return;
   const g = activeGroup();
   const value = specialDayInput.value;
   if (!value) return;
@@ -370,6 +377,7 @@ function addSpecialDay() {
 }
 
 function removeSpecialDay(iso) {
+  if (!Auth.can("manageDays")) return;
   const g = activeGroup();
   g.specialDays = g.specialDays.filter((s) => s.date !== iso);
   save();
@@ -421,6 +429,7 @@ function csvEscape(value) {
 }
 
 function exportCsv() {
+  if (!Auth.can("useFilters")) return;
   const g = activeGroup();
   const cols = visibleColumns(g);
   const students = visibleStudents(g);
@@ -538,6 +547,7 @@ function renderChips(g) {
       remove.textContent = "\u00d7";
       remove.setAttribute("aria-label", `Remove special day ${date}`);
       remove.addEventListener("click", () => removeSpecialDay(date));
+      remove.hidden = !Auth.can("manageDays");
 
       chip.append(text, remove);
       dayChips.appendChild(chip);
@@ -627,6 +637,9 @@ function renderTable(g, cols, students) {
     const actions = document.createElement("div");
     actions.className = "student-actions";
 
+    const canEdit = Auth.can("editStudent");
+    const canDelete = Auth.can("deleteStudent");
+
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "icon-btn edit-student";
@@ -634,6 +647,7 @@ function renderTable(g, cols, students) {
     edit.title = "Edit";
     edit.setAttribute("aria-label", `Edit ${student.name}`);
     edit.addEventListener("click", () => editStudent(student.id));
+    edit.hidden = !canEdit;
 
     const del = document.createElement("button");
     del.type = "button";
@@ -642,7 +656,9 @@ function renderTable(g, cols, students) {
     del.title = "Remove";
     del.setAttribute("aria-label", `Remove ${student.name}`);
     del.addEventListener("click", () => removeStudent(student.id));
+    del.hidden = !canDelete;
 
+    actions.hidden = !canEdit && !canDelete;
     actions.append(edit, del);
     cell.append(info, actions);
     nameTd.appendChild(cell);
