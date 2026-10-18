@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List | MinaEmad</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="todo.css" />
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="attendance.html">Attendance</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="todo-app">
+      <h1>Todo List</h1>
+      <p class="subtitle">Tasks are saved in your browser (localStorage).</p>
+
+      <form id="todoForm" class="todo-form">
+        <input type="text" id="todoInput" placeholder="What needs to be done?" autocomplete="off" />
+        <button type="submit" class="btn">Add</button>
+      </form>
+
+      <div class="todo-toolbar">
+        <span id="itemsLeft" class="items-left">0 tasks left</span>
+        <div class="filters" id="filters">
+          <button class="filter active" data-filter="all">All</button>
+          <button class="filter" data-filter="active">Active</button>
+          <button class="filter" data-filter="completed">Completed</button>
+        </div>
+        <button id="clearCompleted" class="clear-btn">Clear completed</button>
+      </div>
+
+      <ul id="todoList" class="todo-list"></ul>
+      <p id="emptyState" class="empty-state">No tasks yet. Add one above.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p><a href="index.html">&larr; Back to portfolio</a></p>
+  </footer>
+
+  <script src="todo.js"></script>
+</body>
+</html>

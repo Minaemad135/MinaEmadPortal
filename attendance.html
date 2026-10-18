@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance | MinaEmad</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="attendance.css" />
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#projects">Projects</a></li>
+        <li><a href="attendance.html" class="active">Attendance</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="attendance">
+      <h1>Attendance Plan</h1>
+      <p class="subtitle">Pick one or more attendance days, add special days with titles, then take attendance.</p>
+
+      <div class="panel toolbar">
+        <div class="att-controls">
+          <label class="control">
+            <span>Class / group</span>
+            <select id="groupSelect"></select>
+          </label>
+
+          <label class="control">
+            <span>Year</span>
+            <input type="number" id="attYear" min="2000" max="2100" />
+          </label>
+
+          <div class="control">
+            <span>Add student</span>
+            <div class="inline">
+              <input type="text" id="studentName" placeholder="Student name" autocomplete="off" />
+              <input type="text" id="studentId" placeholder="Student ID (optional)" autocomplete="off" />
+              <button type="button" id="addStudent" class="btn">Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="att-controls">
+          <div class="control">
+            <span>Attendance days (select one or more)</span>
+            <div class="weekdays" id="weekdays"></div>
+          </div>
+
+          <div class="control">
+            <span>Add special day</span>
+            <div class="inline">
+              <input type="date" id="specialDay" />
+              <input type="text" id="specialTitle" placeholder="Title (optional)" autocomplete="off" />
+              <button type="button" id="addDay" class="btn">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="fb-search">
+          <svg class="fb-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M10 2a8 8 0 1 0 4.9 14.32l5.39 5.39 1.42-1.42-5.39-5.39A8 8 0 0 0 10 2Zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12Z"
+            />
+          </svg>
+          <input type="text" id="filterStudent" placeholder="Find student by name, ID or code" autocomplete="off" />
+        </div>
+
+        <div class="fb-pill">
+          <span class="fb-label">Month</span>
+          <select id="filterMonth" aria-label="Filter by month"></select>
+        </div>
+
+        <div class="segmented" id="filterTypeGroup" role="group" aria-label="Show days">
+          <button type="button" class="seg active" data-type="all">All days</button>
+          <button type="button" class="seg" data-type="regular">Attendance</button>
+          <button type="button" class="seg" data-type="special">Special</button>
+        </div>
+
+        <div class="fb-actions">
+          <button type="button" id="todayBtn" class="btn ghost">Today</button>
+          <button type="button" id="exportBtn" class="btn ghost">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="day-list">
+        <span class="day-list-label">Special days:</span>
+        <div id="dayChips" class="chips"></div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="dot present"></span> Present</span>
+        <span class="legend-item"><span class="dot absent"></span> Absent</span>
+        <span class="legend-item"><span class="dot none"></span> Not marked (click a cell to cycle)</span>
+      </div>
+
+      <p id="attHint" class="hint" hidden></p>
+
+      <div class="table-wrap" id="tableWrap"></div>
+      <p id="attEmpty" class="empty-state">Add a student to start taking attendance.</p>
+
+      <div class="pagination" id="pagination" hidden>
+        <label class="control">
+          <span>Per page</span>
+          <select id="pageSize">
+            <option value="10">10</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <div class="pager">
+          <button type="button" id="prevPage" class="page-btn">&larr; Prev</button>
+          <span id="pageInfo" class="page-info"></span>
+          <button type="button" id="nextPage" class="page-btn">Next &rarr;</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><a href="index.html">&larr; Back to portfolio</a></p>
+  </footer>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle">Edit</h2>
+      <div id="modalBody" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="button" class="btn" id="modalSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="attendance.js"></script>
+</body>
+</html>

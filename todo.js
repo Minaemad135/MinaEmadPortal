@@ -1,0 +1,114 @@
+const STORAGE_KEY = "portfolio.todos";
+
+const form = document.getElementById("todoForm");
+const input = document.getElementById("todoInput");
+const list = document.getElementById("todoList");
+const itemsLeft = document.getElementById("itemsLeft");
+const emptyState = document.getElementById("emptyState");
+const filtersEl = document.getElementById("filters");
+const clearCompletedBtn = document.getElementById("clearCompleted");
+const menuToggle = document.getElementById("menuToggle");
+const navLinks = document.getElementById("navLinks");
+
+let todos = loadTodos();
+let currentFilter = "all";
+
+menuToggle.addEventListener("click", () => navLinks.classList.toggle("open"));
+
+function loadTodos() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTodos() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+}
+
+function getVisibleTodos() {
+  if (currentFilter === "active") return todos.filter((t) => !t.done);
+  if (currentFilter === "completed") return todos.filter((t) => t.done);
+  return todos;
+}
+
+function render() {
+  const visible = getVisibleTodos();
+  list.innerHTML = "";
+
+  visible.forEach((todo) => {
+    const li = document.createElement("li");
+    li.className = `todo-item${todo.done ? " done" : ""}`;
+    li.dataset.id = todo.id;
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = todo.done;
+    checkbox.addEventListener("change", () => toggleTodo(todo.id));
+
+    const span = document.createElement("span");
+    span.className = "task-text";
+    span.textContent = todo.text;
+
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.innerHTML = "&times;";
+    del.setAttribute("aria-label", "Delete task");
+    del.addEventListener("click", () => deleteTodo(todo.id));
+
+    li.append(checkbox, span, del);
+    list.appendChild(li);
+  });
+
+  const remaining = todos.filter((t) => !t.done).length;
+  itemsLeft.textContent = `${remaining} task${remaining === 1 ? "" : "s"} left`;
+
+  emptyState.textContent = todos.length
+    ? "No tasks match this filter."
+    : "No tasks yet. Add one above.";
+  emptyState.style.display = visible.length ? "none" : "block";
+}
+
+function addTodo(text) {
+  todos.unshift({ id: Date.now().toString(), text: text.trim(), done: false });
+  saveTodos();
+  render();
+}
+
+function toggleTodo(id) {
+  const todo = todos.find((t) => t.id === id);
+  if (todo) todo.done = !todo.done;
+  saveTodos();
+  render();
+}
+
+function deleteTodo(id) {
+  todos = todos.filter((t) => t.id !== id);
+  saveTodos();
+  render();
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!input.value.trim()) return;
+  addTodo(input.value);
+  input.value = "";
+  input.focus();
+});
+
+filtersEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".filter");
+  if (!btn) return;
+  currentFilter = btn.dataset.filter;
+  filtersEl.querySelectorAll(".filter").forEach((b) => b.classList.toggle("active", b === btn));
+  render();
+});
+
+clearCompletedBtn.addEventListener("click", () => {
+  todos = todos.filter((t) => !t.done);
+  saveTodos();
+  render();
+});
+
+render();
