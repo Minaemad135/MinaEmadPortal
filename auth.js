@@ -2,6 +2,26 @@
 
 (function () {
   const STORAGE_KEY = "mina.users";
+  // The signed-in session is per-browser only — never synced to Firestore,
+  // otherwise every visitor would share (and overwrite) one currentUserId.
+  const SESSION_KEY = "mina.session";
+
+  function readSession() {
+    try {
+      return localStorage.getItem(SESSION_KEY) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeSession(id) {
+    try {
+      if (id) localStorage.setItem(SESSION_KEY, id);
+      else localStorage.removeItem(SESSION_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
 
   const PERM_GROUPS = [
     {
@@ -108,7 +128,11 @@
   function read() {
     let raw = null;
     try {
-      raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (window.MinaDB && typeof window.MinaDB.get === "function") {
+        raw = window.MinaDB.get(STORAGE_KEY);
+      } else {
+        raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      }
     } catch (e) {
       raw = null;
     }
@@ -152,14 +176,39 @@
     });
     if (!roles.length) roles = defaultRoles();
 
-    return { users, roles, currentUserId: raw.currentUserId || null };
+    // Session is per-browser. Migrate a legacy in-document value once,
+    // then strip it so it can never resurrect a logged-out session.
+    const legacyId = raw.currentUserId || null;
+    const sessionId = readSession() || legacyId;
+    if (legacyId) {
+      try {
+        const shared = { users, roles };
+        if (window.MinaDB && typeof window.MinaDB.set === "function") {
+          window.MinaDB.set(STORAGE_KEY, shared);
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(shared));
+        }
+        if (sessionId) writeSession(sessionId);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    return { users, roles, currentUserId: sessionId };
   }
 
   let store = read();
 
   function save() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      // Persist only the shared parts (users + roles) to Firestore.
+      const shared = { users: store.users, roles: store.roles };
+      if (window.MinaDB && typeof window.MinaDB.set === "function") {
+        window.MinaDB.set(STORAGE_KEY, shared);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(shared));
+      }
+      // Session stays local.
+      writeSession(store.currentUserId);
     } catch (e) {
       /* ignore */
     }
@@ -212,8 +261,6 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   /* ---------- UI: login / denied / gating ---------- */
-
-  const locked = !currentUser();
 
   function el(tag, cls, text) {
     const node = document.createElement(tag);
@@ -474,6 +521,9 @@
     const siteNav = document.getElementById("siteNav");
     if (!siteNav) return;
 
+    // Remove any previously rendered chip to avoid duplicates on re-render.
+    siteNav.querySelectorAll(".user-chip").forEach((node) => node.remove());
+
     siteNav.querySelectorAll(".nav-links a").forEach((link) => {
       const href = (link.getAttribute("href") || "").toLowerCase();
       const key = href.includes("attendance")
@@ -511,17 +561,56 @@
     siteNav.appendChild(chip);
   }
 
-  const user = currentUser();
-  const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
+  let lastRenderSig = null;
 
-  if (noAdminsLeft) {
-    buildRecovery();
-  } else if (!user) {
-    buildLogin();
+  function renderInitial() {
+    // Reveal the page now that auth has decided what to show.
+    document.documentElement.classList.remove("auth-pending");
+    const u = currentUser();
+    const noneLeft = store.users.length > 0 && adminCount() === 0;
+    if (noneLeft) {
+      buildRecovery();
+    } else if (!u) {
+      buildLogin();
+    } else {
+      renderSidebar();
+      gateDataPerms();
+      if (!can(PAGE_PERM[pageKey()])) buildDenied(u);
+    }
+  }
+
+  // Wait for the data layer (Firestore/localStorage) before rendering the UI.
+  if (!window.MinaDB || !window.MinaDB.ready) {
+    renderInitial();
   } else {
-    renderSidebar();
-    gateDataPerms();
-    if (!can(PAGE_PERM[pageKey()])) buildDenied(user);
+    // Safety net: never leave the page hidden if the network hangs.
+    setTimeout(() => document.documentElement.classList.remove("auth-pending"), 8000);
+    window.MinaDB.ready().then(() => {
+      store = read();
+
+      // React to remote changes from other tabs/pages without reloading the page.
+      if (window.MinaDB.onChange) {
+        window.MinaDB.onChange(STORAGE_KEY, (value) => {
+          if (!value || !Array.isArray(value.users)) return;
+          // Compare only the shared parts; the session is not part of the doc.
+          const before = JSON.stringify({ users: store.users, roles: store.roles });
+          const after = JSON.stringify({ users: value.users, roles: value.roles });
+          if (after === before) return;
+          store = read();
+
+          // Only re-render if the signed-in user or its permissions changed.
+          const me = currentUser();
+          const sig = me ? `${me.id}:${me.roleId}:${JSON.stringify(roleOf(me)?.perms)}` : "none";
+          if (sig === lastRenderSig) return;
+          lastRenderSig = sig;
+          renderInitial();
+        });
+      }
+
+      const me = currentUser();
+      lastRenderSig = me ? `${me.id}:${me.roleId}:${JSON.stringify(roleOf(me)?.perms)}` : "none";
+      renderInitial();
+    });
   }
 
   window.MinaAuth = {
@@ -550,6 +639,6 @@
       document.querySelectorAll(selector).forEach((node) => (node.hidden = !allow));
       return allow;
     },
-    isLocked: locked,
+    isLocked: () => !currentUser(),
   };
 })();

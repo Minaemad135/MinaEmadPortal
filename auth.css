@@ -153,6 +153,15 @@ body.auth-locked .menu-toggle {
   display: none;
 }
 
+/* While auth is resolving (Firestore round-trip), hide the page content so it
+   never flashes before the login overlay / permissions decide. */
+html.auth-pending body main,
+html.auth-pending body footer,
+html.auth-pending body .sidebar,
+html.auth-pending body .menu-toggle {
+  visibility: hidden;
+}
+
 .auth-denied-box {
   position: fixed;
   inset: 0;

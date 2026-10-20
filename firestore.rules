@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// Firestore security rules for MinaEmad Portal.
+//
+// The app stores two documents under the `store` collection:
+//   store/mina.users       -> { value: { users: [...], roles: [...], currentUserId } }
+//   store/mina.attendance  -> { value: { activeGroup, groups: [...] } }
+//
+// IMPORTANT: The web config in firebase-config.js is public (it always is for web apps).
+// Your passwords are only protected by the mina.users rules below.
+//
+// ── Option A: private app, only your browser can read/write (RECOMMENDED) ──────────
+// Paste this rule, then sign in once from the Firebase Console rules playground
+// is NOT needed — this blocks EVERYONE. Use only while testing locally.
+//
+// ── Option B: open to your portal (current behaviour, no real security) ────────────
+// Anyone with the config can read/write. The app's own login screen is the only gate.
+//
+// Pick ONE of the two `allow` blocks below.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /store/{docId} {
+      // ── Option B (active): open access so the app works out of the box.
+      allow read, write: if true;
+
+      // ── Option A (recommended): uncomment to lock the whole store down,
+      //    then enable Firebase Authentication and scope by request.auth.
+      // allow read, write: if false;
+    }
+
+    // Deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -59,7 +59,10 @@ function normGroup(g) {
 
 function loadAtt() {
   try {
-    const raw = JSON.parse(localStorage.getItem(ATT_KEY));
+    const raw =
+      window.MinaDB && window.MinaDB.get
+        ? window.MinaDB.get(ATT_KEY)
+        : JSON.parse(localStorage.getItem(ATT_KEY));
     if (raw && Array.isArray(raw.groups)) {
       const groups = raw.groups.map(normGroup);
       const active = groups.some((g) => g.id === raw.activeGroup)
@@ -79,7 +82,11 @@ let att = loadAtt();
 
 function saveAtt() {
   try {
-    localStorage.setItem(ATT_KEY, JSON.stringify(att));
+    if (window.MinaDB && window.MinaDB.set) {
+      window.MinaDB.set(ATT_KEY, att);
+    } else {
+      localStorage.setItem(ATT_KEY, JSON.stringify(att));
+    }
   } catch (e) {
     /* ignore */
   }
@@ -735,3 +742,18 @@ renderUsers();
 document.addEventListener("minasettings:change", sync);
 
 sync();
+
+/* Reflect remote changes (Firestore) from other tabs/pages. */
+if (window.MinaDB && window.MinaDB.ready) {
+  window.MinaDB.ready().then(() => {
+    att = loadAtt();
+    renderGroups();
+  });
+  if (window.MinaDB.onChange) {
+    window.MinaDB.onChange(ATT_KEY, (value) => {
+      if (!value || !Array.isArray(value.groups)) return;
+      att = loadAtt();
+      renderGroups();
+    });
+  }
+}

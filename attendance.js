@@ -113,7 +113,10 @@ function migrate(saved) {
 
 function load() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved =
+      window.MinaDB && window.MinaDB.get
+        ? window.MinaDB.get(STORAGE_KEY)
+        : JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && typeof saved === "object") return migrate(saved);
   } catch (e) {
     /* ignore */
@@ -167,7 +170,11 @@ const activeGroup = () => state.groups.find((g) => g.id === state.activeGroup) |
 
 function save() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (window.MinaDB && window.MinaDB.set) {
+      window.MinaDB.set(STORAGE_KEY, state);
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
   } catch (e) {
     /* ignore */
   }
@@ -874,3 +881,22 @@ pageSizeEl.value = "10";
 currentPage = 1;
 
 render();
+
+/* Reflect remote changes (Firestore) from other tabs/pages. */
+if (window.MinaDB && window.MinaDB.ready) {
+  window.MinaDB.ready().then(() => {
+    const loaded = load();
+    state = loaded;
+    if (ensureCodes()) save();
+    render();
+  });
+  if (window.MinaDB.onChange) {
+    window.MinaDB.onChange(STORAGE_KEY, (value) => {
+      if (!value || typeof value !== "object") return;
+      if (JSON.stringify(value) === JSON.stringify(state)) return;
+      state = migrate(value);
+      if (ensureCodes()) save();
+      render();
+    });
+  }
+}
