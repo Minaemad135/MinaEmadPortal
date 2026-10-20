@@ -47,7 +47,15 @@
     badge.style.display = "block";
   }
 
-  document.body.appendChild(badge);
+  function mount() {
+    if (document.body) document.body.appendChild(badge);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mount);
+  } else {
+    mount();
+  }
   paint();
 
   window.MinaDB.ready().then(() => {

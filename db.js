@@ -1,4 +1,4 @@
-/* ---------- Data layer: Firestore with localStorage cache ---------- */
+/* ---------- Data layer: Firestore (one collection per table, one doc per row) ---------- */
 /* Public API (all methods are safe to call before ready() resolves):
      MinaDB.ready()              -> Promise, resolves when initial load finished
      MinaDB.get(key)             -> cached value (object) or null, synchronous
@@ -8,18 +8,43 @@
      MinaDB.isOnline()           -> boolean, whether Firestore is reachable
      MinaDB.status               -> "loading" | "online" | "offline"
 
-   Backed by a single Firestore document per key under the `store` collection,
-   e.g. collection "store", document "auth". The document holds { value: <object> }.
+   Storage shape:
+     Each "table" is its own Firestore collection, and every row is its own
+     document. Documents use auto-generated Firestore ids; the row's own `id`
+     field is what the app uses, so we keep a live id -> docId map per table.
+
+       users table      -> collection "users"       (each user  = 1 doc)
+       roles table      -> collection "roles"       (each role  = 1 doc)
+       attendance groups-> collection "groups"      (each group = 1 doc)
+       scalars          -> collection "meta"        (doc holds activeGroup)
+
+   The public API is unchanged: MinaDB.get("mina.users") still returns
+   { users, roles }, and get("mina.attendance") still returns
+   { activeGroup, groups }. Only the storage internals differ.
+
    localStorage mirrors every key so the app still works with no connection. */
 
 (function () {
-  const COLLECTION = "store";
-  const KEYS = ["mina.users", "mina.attendance"];
+  const SCHEMA = {
+    "mina.users": {
+      rows: [
+        { collection: "users", field: "users" },
+        { collection: "roles", field: "roles" },
+      ],
+      meta: null,
+    },
+    "mina.attendance": {
+      rows: [{ collection: "groups", field: "groups" }],
+      meta: { collection: "meta", doc: "attendance", fields: ["activeGroup"] },
+    },
+  };
+  const KEYS = Object.keys(SCHEMA);
 
   const cache = {};
   const listeners = {};
   const dirty = {}; // keys changed locally while offline, to retry later
-  const pendingWrite = {}; // fingerprint of our own last write, to ignore the echo
+  const pendingDocs = {}; // set of docIds we just wrote, to ignore the echo
+  const docIds = {}; // key -> collection -> rowId -> firestore docId
 
   let db = null;
   let online = false;
@@ -32,6 +57,10 @@
     lastError = err ? `${msg}: ${(err && err.message) || err}` : msg;
     // eslint-disable-next-line no-console
     console.warn("[MinaDB]", lastError);
+  }
+
+  function pendingKey(key, collection) {
+    return `${key}::${collection}`;
   }
 
   /* ---- localStorage helpers ---- */
@@ -50,14 +79,6 @@
       localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
       /* ignore quota / private mode */
-    }
-  }
-
-  function lsGetRaw(key) {
-    try {
-      return localStorage.getItem(key);
-    } catch (e) {
-      return null;
     }
   }
 
@@ -89,19 +110,104 @@
     }
   }
 
-  async function pullOne(fs, key) {
-    const snap = await fs.collection(COLLECTION).doc(key).get();
-    if (snap.exists) {
-      const data = snap.data();
-      return data && typeof data === "object" && "value" in data ? data.value : data;
-    }
-    return undefined; // undefined == document missing
+  /* ---- assemble a logical value from its collections ---- */
+
+  function rowMap(key, collection) {
+    docIds[key] = docIds[key] || {};
+    docIds[key][collection] = docIds[key][collection] || {};
+    return docIds[key][collection];
   }
 
+  // Read every row collection + meta doc for a key, and build the value object.
+  async function pullOne(fs, key) {
+    const spec = SCHEMA[key];
+    const value = {};
+
+    for (const row of spec.rows) {
+      const snap = await fs.collection(row.collection).get();
+      const items = [];
+      const map = rowMap(key, row.collection);
+      Object.keys(map).forEach((k) => delete map[k]);
+      snap.forEach((doc) => {
+        const data = doc.data() || {};
+        items.push(data);
+        if (data.id != null) map[String(data.id)] = doc.id;
+      });
+      value[row.field] = items;
+    }
+
+    if (spec.meta) {
+      const snap = await fs.collection(spec.meta.collection).doc(spec.meta.doc).get();
+      const data = snap.exists ? snap.data() || {} : {};
+      spec.meta.fields.forEach((f) => {
+        if (f in data) value[f] = data[f];
+      });
+    }
+
+    return value;
+  }
+
+  // Write the whole value: diff the rows against what's already stored.
   async function pushOne(fs, key) {
-    const value = cache[key];
-    pendingWrite[key] = JSON.stringify(value);
-    await fs.collection(COLLECTION).doc(key).set({ value });
+    const spec = SCHEMA[key];
+    const value = cache[key] || {};
+
+    for (const row of spec.rows) {
+      const items = Array.isArray(value[row.field]) ? value[row.field] : [];
+      const col = fs.collection(row.collection);
+
+      // Always re-read the live id -> docId map so we update existing row docs
+      // instead of inserting duplicates when several writers race on first run.
+      const map = {};
+      const snap = await col.get();
+      snap.forEach((doc) => {
+        const data = doc.data() || {};
+        if (data.id != null) map[String(data.id)] = doc.id;
+      });
+
+      const seen = new Set();
+      const batch = [];
+
+      for (const item of items) {
+        const id = item && item.id != null ? String(item.id) : null;
+        if (id) seen.add(id);
+        const docId = id ? map[id] : null;
+        if (docId) {
+          pendingDocs[row.collection + "/" + docId] = true;
+          batch.push(col.doc(docId).set(item));
+        } else {
+          const ref = col.doc();
+          if (id) map[id] = ref.id;
+          pendingDocs[row.collection + "/" + ref.id] = true;
+          batch.push(ref.set(item));
+        }
+      }
+
+      // Remove documents whose row id is gone.
+      Object.keys(map).forEach((rowId) => {
+        if (seen.has(rowId)) return;
+        const docId = map[rowId];
+        pendingDocs[row.collection + "/" + docId] = true;
+        batch.push(col.doc(docId).delete());
+        delete map[rowId];
+      });
+
+      await Promise.all(batch);
+
+      // Refresh the cached map for listeners.
+      const live = rowMap(key, row.collection);
+      Object.keys(live).forEach((k) => delete live[k]);
+      Object.keys(map).forEach((k) => (live[k] = map[k]));
+    }
+
+    if (spec.meta) {
+      const data = {};
+      spec.meta.fields.forEach((f) => {
+        if (f in value) data[f] = value[f];
+      });
+      await fs.collection(spec.meta.collection).doc(spec.meta.doc).set(data);
+    }
+
     dirty[key] = false;
   }
 
@@ -123,7 +229,7 @@
 
     try {
       const results = await Promise.all(
-        KEYS.map((key) => pullOne(db, key).then((v) => ({ key, v })).catch((e) => ({ key, v: undefined, e })))
+        KEYS.map((key) => pullOne(db, key).then((v) => ({ key, v })).catch((e) => ({ key, v: null, e })))
       );
 
       for (const { key, v, e } of results) {
@@ -131,8 +237,10 @@
           note(`Could not read "${key}" (check Firestore rules)`, e);
           continue;
         }
-        if (v === undefined) {
-          // No document in Firestore.
+        if (v === null) continue;
+        const empty = SCHEMA[key].rows.every((row) => (v[row.field] || []).length === 0);
+        if (empty) {
+          // No rows in Firestore.
           if (cache[key] != null) {
             // Migrate: push the existing local data up on first run.
             try {
@@ -161,35 +269,89 @@
     readyResolve();
   }
 
+  // Rebuild one key's value from the live collections, then emit.
+  async function subscribeCollection(key, row) {
+    const spec = SCHEMA[key];
+    let first = true;
+    db.collection(row.collection).onSnapshot(
+      (snap) => {
+        online = true;
+        status = "online";
+        if (dirty[key]) return; // local change pending; don't clobber it
+
+        // Ignore snapshots that only echo our own writes.
+        let onlyEcho = true;
+        snap.docChanges().forEach((ch) => {
+          const token = row.collection + "/" + ch.doc.id;
+          if (pendingDocs[token]) {
+            delete pendingDocs[token];
+          } else {
+            onlyEcho = false;
+          }
+        });
+        if (first) {
+          first = false;
+          onlyEcho = false;
+        }
+        if (onlyEcho) return;
+
+        const items = [];
+        const map = rowMap(key, row.collection);
+        Object.keys(map).forEach((k) => delete map[k]);
+        snap.forEach((doc) => {
+          const data = doc.data() || {};
+          items.push(data);
+          if (data.id != null) map[String(data.id)] = doc.id;
+        });
+
+        const current = cache[key] || {};
+        const next = { ...current, [row.field]: items };
+        cache[key] = next;
+        lsSet(key, next);
+        emit(key);
+      },
+      () => {
+        online = false;
+        status = "offline";
+        note(`Lost connection to "${row.collection}" (check Firestore rules)`);
+      }
+    );
+  }
+
+  function subscribeMeta(key) {
+    const spec = SCHEMA[key];
+    if (!spec.meta) return;
+    db.collection(spec.meta.collection)
+      .doc(spec.meta.doc)
+      .onSnapshot(
+        (snap) => {
+          online = true;
+          status = "online";
+          if (!snap.exists || dirty[key]) return;
+          const data = snap.data() || {};
+          const current = cache[key] || {};
+          const next = { ...current };
+          spec.meta.fields.forEach((f) => {
+            if (f in data) next[f] = data[f];
+          });
+          cache[key] = next;
+          lsSet(key, next);
+          emit(key);
+        },
+        () => {
+          online = false;
+          status = "offline";
+          note(`Lost connection to "${spec.meta.collection}" (check Firestore rules)`);
+        }
+      );
+  }
+
   async function subscribeAll() {
     if (!db) return;
     KEYS.forEach((key) => {
-      db.collection(COLLECTION)
-        .doc(key)
-        .onSnapshot(
-          (snap) => {
-            online = true;
-            status = "online";
-            if (!snap.exists) return;
-            if (dirty[key]) return; // local change pending; don't clobber it
-            const data = snap.data();
-            const value = data && typeof data === "object" && "value" in data ? data.value : data;
-            // Ignore the echo of a write we just made ourselves.
-            const fp = JSON.stringify(value);
-            if (pendingWrite[key] === fp) {
-              pendingWrite[key] = null;
-              return;
-            }
-            cache[key] = value;
-            lsSet(key, value);
-            emit(key);
-          },
-          () => {
-            online = false;
-            status = "offline";
-            note(`Lost connection to "${key}" (check Firestore rules)`);
-          }
-        );
+      const spec = SCHEMA[key];
+      spec.rows.forEach((row) => subscribeCollection(key, row));
+      subscribeMeta(key);
     });
   }
 
@@ -255,6 +417,7 @@
       return status;
     },
     KEYS,
+    SCHEMA,
   };
 
   // Kick off the async load immediately.
