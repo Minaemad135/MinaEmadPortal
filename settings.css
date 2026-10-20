@@ -335,16 +335,40 @@
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-.user-add-row select {
+.user-add-row select,
+.perm-editor-field select {
   flex: 0 0 auto;
   min-width: 130px;
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 2rem 0.55rem 0.75rem;
   color: var(--text);
   font-family: inherit;
   font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23888888' d='M1 1l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.user-add-row select:hover,
+.perm-editor-field select:hover {
+  border-color: var(--accent);
+}
+
+.user-add-row select option,
+.perm-editor-field select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.perm-editor-field select {
+  width: 100%;
 }
 
 .user-add-row input:focus,

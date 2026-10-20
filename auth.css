@@ -67,7 +67,8 @@
   color: var(--muted);
 }
 
-.auth-field input {
+.auth-field input,
+.auth-field select {
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-sm);
@@ -80,10 +81,30 @@
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
-.auth-field input:focus {
+.auth-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23888888' d='M1 1l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.auth-field select:hover {
+  border-color: var(--accent);
+}
+
+.auth-field input:focus,
+.auth-field select:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.auth-field select option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .auth-error {

@@ -27,6 +27,7 @@
         { key: "changeAppearance", label: "Change theme & design" },
         { key: "manageClasses", label: "Add / rename / delete classes" },
         { key: "manageUsers", label: "Add / edit / delete users" },
+        { key: "manageRoles", label: "Create, edit & delete roles" },
       ],
     },
     {
@@ -83,23 +84,75 @@
     return out;
   }
 
+  function normalizePerms(perms) {
+    const out = {};
+    ALL_PERMS.forEach((key) => {
+      out[key] = perms && typeof perms[key] === "boolean" ? perms[key] : false;
+    });
+    return out;
+  }
+
+  function permsFromKeys(keys) {
+    const out = {};
+    ALL_PERMS.forEach((key) => (out[key] = keys.includes(key)));
+    return out;
+  }
+
+  function defaultRoles() {
+    return [
+      { id: "admin", name: "Admin", perms: permsFromKeys(PRESETS.admin) },
+      { id: "student", name: "Student", perms: permsFromKeys(PRESETS.student) },
+    ];
+  }
+
   function read() {
+    let raw = null;
     try {
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (raw && Array.isArray(raw.users)) {
-        raw.users = raw.users.map((u) => ({
-          id: u.id || uid(),
-          name: u.name || "User",
-          passwordHash: u.passwordHash || "",
-          role: ["admin", "student", "custom"].includes(u.role) ? u.role : "custom",
-          perms: permsFor(u.role, u.perms),
-        }));
-        return raw;
-      }
+      raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
     } catch (e) {
-      /* ignore */
+      raw = null;
     }
-    return { users: [], currentUserId: null };
+    if (!raw || !Array.isArray(raw.users)) {
+      return { users: [], roles: defaultRoles(), currentUserId: null };
+    }
+
+    let roles =
+      Array.isArray(raw.roles) && raw.roles.length
+        ? raw.roles.map((r) => ({
+            id: r.id || uid(),
+            name: r.name || "Role",
+            perms: normalizePerms(r.perms),
+          }))
+        : defaultRoles();
+
+    const users = raw.users.map((u) => {
+      const base = {
+        id: u.id || uid(),
+        name: u.name || "User",
+        passwordHash: u.passwordHash || "",
+      };
+
+      if (u.roleId) return { ...base, roleId: u.roleId };
+
+      if (u.role === "admin" || u.role === "student") {
+        return { ...base, roleId: u.role };
+      }
+
+      const role = {
+        id: uid(),
+        name: `${base.name} (custom)`,
+        perms: normalizePerms(u.perms),
+      };
+      roles.push(role);
+      return { ...base, roleId: role.id };
+    });
+
+    users.forEach((u) => {
+      if (!roles.some((r) => r.id === u.roleId)) u.roleId = roles[0].id;
+    });
+    if (!roles.length) roles = defaultRoles();
+
+    return { users, roles, currentUserId: raw.currentUserId || null };
   }
 
   let store = read();
@@ -113,12 +166,39 @@
   }
 
   const currentUser = () => store.users.find((u) => u.id === store.currentUserId) || null;
+  const roleById = (id) => store.roles.find((r) => r.id === id) || null;
+  const roleOf = (user) => (user ? roleById(user.roleId) : null);
+  const listRoles = () => store.roles;
 
   function can(perm) {
-    const user = currentUser();
-    if (!user) return false;
-    if (user.role === "admin") return true;
-    return !!user.perms[perm];
+    const role = roleOf(currentUser());
+    return !!(role && role.perms[perm]);
+  }
+
+  function isAdminPerms(perms) {
+    return !!perms && ALL_PERMS.every((key) => perms[key]);
+  }
+
+  function isAdminUser(user) {
+    const role = user ? roleById(user.roleId) : null;
+    return !!(role && isAdminPerms(role.perms));
+  }
+
+  function adminCount() {
+    return store.users.filter(isAdminUser).length;
+  }
+
+  function getState() {
+    return store;
+  }
+
+  function saveState() {
+    save();
+  }
+
+  function refresh() {
+    store = read();
+    return store;
   }
 
   function pageKey() {
@@ -233,12 +313,16 @@
 
       if (isFirst) {
         if (password !== confirmInput.value) return fail("Passwords do not match.");
+        let adminRole = store.roles.find((r) => r.id === "admin");
+        if (!adminRole) {
+          adminRole = { id: uid(), name: "Admin", perms: permsFromKeys(ALL_PERMS) };
+          store.roles.unshift(adminRole);
+        }
         const user = {
           id: uid(),
           name,
           passwordHash: hashPassword(password),
-          role: "admin",
-          perms: permsFor("admin"),
+          roleId: adminRole.id,
         };
         store.users.push(user);
         store.currentUserId = user.id;
@@ -258,6 +342,95 @@
 
     document.body.classList.add("auth-locked");
     setTimeout(() => nameInput.focus(), 50);
+  }
+
+  function ensureFullAdminRole() {
+    const full = store.roles.find((r) => isAdminPerms(r.perms));
+    if (full) return full;
+    let name = "Admin";
+    if (store.roles.some((r) => r.name.toLowerCase() === name.toLowerCase()))
+      name = "Admin (restored)";
+    const role = { id: uid(), name, perms: permsFromKeys(ALL_PERMS) };
+    store.roles.push(role);
+    return role;
+  }
+
+  function buildRecovery() {
+    document.body.classList.add("auth-locked");
+
+    const overlay = el("div", "auth-overlay");
+    overlay.id = "authRecovery";
+
+    const card = el("form", "auth-card");
+    card.id = "recoveryForm";
+
+    card.append(
+      el("div", "auth-logo", "!"),
+      el("h2", null, "No admin account"),
+      el(
+        "p",
+        "auth-sub",
+        "Every account has been demoted, so nobody can manage users any more. Pick an account, enter its password, and it will be given full admin access."
+      )
+    );
+
+    const userField = el("label", "auth-field");
+    userField.appendChild(el("span", null, "Account"));
+    const userSel = el("select");
+    userSel.id = "recoveryUser";
+    store.users.forEach((u) => {
+      const opt = el("option", null, u.name);
+      opt.value = u.id;
+      userSel.appendChild(opt);
+    });
+    userField.appendChild(userSel);
+    card.appendChild(userField);
+
+    const passField = el("label", "auth-field");
+    passField.appendChild(el("span", null, "Password"));
+    const passInput = el("input");
+    passInput.type = "password";
+    passInput.id = "recoveryPassword";
+    passInput.autocomplete = "current-password";
+    passInput.placeholder = "\u2022\u2022\u2022\u2022\u2022\u2022";
+    passInput.required = true;
+    passField.appendChild(passInput);
+    card.appendChild(passField);
+
+    const error = el("p", "auth-error");
+    error.id = "recoveryError";
+    card.appendChild(error);
+
+    const submit = el("button", "btn auth-submit", "Restore admin access");
+    submit.type = "submit";
+    card.appendChild(submit);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    card.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const user = store.users.find((u) => u.id === userSel.value);
+      const password = passInput.value;
+      if (!user) return;
+      if (password.length < 4) {
+        error.textContent = "Password must be at least 4 characters.";
+        return;
+      }
+      if (user.passwordHash !== hashPassword(password)) {
+        error.textContent = "Wrong password.";
+        passInput.value = "";
+        passInput.focus();
+        return;
+      }
+      const role = ensureFullAdminRole();
+      user.roleId = role.id;
+      store.currentUserId = user.id;
+      save();
+      location.reload();
+    });
+
+    setTimeout(() => passInput.focus(), 50);
   }
 
   function buildDenied(user) {
@@ -322,7 +495,11 @@
 
     const chip = el("div", "user-chip");
     const top = el("div", "user-chip-top");
-    top.append(el("span", "user-chip-name", user.name), el("span", "user-chip-role", user.role));
+    const role = roleOf(user);
+    top.append(
+      el("span", "user-chip-name", user.name),
+      el("span", "user-chip-role", role ? role.name : "no role")
+    );
     const logout = el("button", "user-logout", "Log out");
     logout.type = "button";
     logout.addEventListener("click", () => {
@@ -335,8 +512,11 @@
   }
 
   const user = currentUser();
+  const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
 
-  if (!user) {
+  if (noAdminsLeft) {
+    buildRecovery();
+  } else if (!user) {
     buildLogin();
   } else {
     renderSidebar();
@@ -350,8 +530,21 @@
     PRESETS,
     can,
     currentUser,
+    roleById,
+    roleOf,
+    listRoles,
+    isAdminPerms,
+    isAdminUser,
+    adminCount,
     hashPassword,
     permsFor,
+    normalizePerms,
+    permsFromKeys,
+    defaultRoles,
+    uid,
+    getState,
+    saveState,
+    refresh,
     gate: (selector, perm) => {
       const allow = can(perm);
       document.querySelectorAll(selector).forEach((node) => (node.hidden = !allow));

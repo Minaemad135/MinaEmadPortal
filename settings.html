@@ -30,6 +30,53 @@
       <h1>Settings</h1>
       <p class="subtitle">Customize how MinaEmad looks. Changes apply instantly and are saved in this browser.</p>
 
+      <div class="settings-group" data-perm="manageRoles">
+        <h2>Roles</h2>
+        <p class="group-note">
+          Create named roles and choose exactly which pages and actions they allow. Assign a role to
+          a user in the Users section below.
+        </p>
+        <ul class="group-list role-list" id="roleList"></ul>
+
+        <div class="user-add">
+          <div class="user-add-row">
+            <input type="text" id="newRoleName" placeholder="New role name" autocomplete="off" />
+            <button type="button" class="btn" id="addRoleBtn">Add role</button>
+          </div>
+          <details class="perm-details" id="newRolePermDetails">
+            <summary>Permissions</summary>
+            <div class="perm-groups" id="newRolePerms"></div>
+          </details>
+        </div>
+      </div>
+
+      <div class="settings-group" data-perm="manageUsers">
+        <h2>Users</h2>
+        <p class="group-note">
+          Add people by name and password, then assign one of the roles you created above.
+        </p>
+        <ul class="user-list" id="userList"></ul>
+
+        <div class="user-add">
+          <div class="user-add-row">
+            <input type="text" id="newUserName" placeholder="Name" autocomplete="off" />
+            <input type="password" id="newUserPassword" placeholder="Password" autocomplete="new-password" />
+            <select id="newUserRole"></select>
+            <button type="button" class="btn" id="addUserBtn">Add user</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group" data-perm="manageClasses">
+        <h2>Classes / groups</h2>
+        <p class="group-note">Add, rename or remove the classes used on the Attendance page. Changes save instantly.</p>
+        <ul class="group-list" id="groupList"></ul>
+        <div class="group-add">
+          <input type="text" id="newGroupName" placeholder="New class name" autocomplete="off" />
+          <button type="button" class="btn" id="addGroupBtn">Add class</button>
+        </div>
+      </div>
+
       <div class="settings-group" data-perm="changeAppearance">
         <h2>Theme</h2>
         <div class="option-grid" id="themeOptions">
@@ -94,42 +141,6 @@
             <span class="shape" data-design-preview="glass"></span>
             <span class="option-label">Glass</span>
           </button>
-        </div>
-      </div>
-
-      <div class="settings-group" data-perm="manageClasses">
-        <h2>Classes / groups</h2>
-        <p class="group-note">Add, rename or remove the classes used on the Attendance page. Changes save instantly.</p>
-        <ul class="group-list" id="groupList"></ul>
-        <div class="group-add">
-          <input type="text" id="newGroupName" placeholder="New class name" autocomplete="off" />
-          <button type="button" class="btn" id="addGroupBtn">Add class</button>
-        </div>
-      </div>
-
-      <div class="settings-group" data-perm="manageUsers">
-        <h2>Users</h2>
-        <p class="group-note">
-          Add people by name and choose exactly which pages and actions they can use. Admins get
-          everything.
-        </p>
-        <ul class="user-list" id="userList"></ul>
-
-        <div class="user-add">
-          <div class="user-add-row">
-            <input type="text" id="newUserName" placeholder="Name" autocomplete="off" />
-            <input type="password" id="newUserPassword" placeholder="Password" autocomplete="new-password" />
-            <select id="newUserRole">
-              <option value="admin">Admin</option>
-              <option value="student" selected>Student</option>
-              <option value="custom">Custom</option>
-            </select>
-            <button type="button" class="btn" id="addUserBtn">Add user</button>
-          </div>
-          <details class="perm-details" id="newUserPermDetails">
-            <summary>Permissions</summary>
-            <div class="perm-groups" id="newUserPerms"></div>
-          </details>
         </div>
       </div>
 

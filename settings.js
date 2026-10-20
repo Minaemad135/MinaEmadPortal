@@ -4,9 +4,6 @@ const themeOptions = document.querySelectorAll("#themeOptions .option");
 const designOptions = document.querySelectorAll("#designOptions .option");
 const status = document.getElementById("settingsStatus");
 
-const menuToggle = document.getElementById("menuToggle");
-const siteNav = document.getElementById("siteNav");
-
 function setPressed(nodes, key, value) {
   nodes.forEach((node) => node.setAttribute("aria-pressed", String(node.dataset[key] === value)));
 }
@@ -230,45 +227,33 @@ newGroupNameEl.addEventListener("keydown", (e) => {
 
 renderGroups();
 
-/* ---------- Users & permissions ---------- */
+/* ---------- Roles & users ---------- */
 
-const A = window.MinaAuth || {
-  can: () => true,
-  PERM_GROUPS: [],
-  ALL_PERMS: [],
-  PRESETS: {},
-  permsFor: (role, perms) => perms || {},
-  hashPassword: (t) => String(t),
-};
-const USERS_KEY = "mina.users";
+const A = window.MinaAuth;
+const store = () => A.getState();
+
+const roleListEl = document.getElementById("roleList");
+const newRoleNameEl = document.getElementById("newRoleName");
+const addRoleBtnEl = document.getElementById("addRoleBtn");
+const newRolePermsEl = document.getElementById("newRolePerms");
+const newRolePermDetailsEl = document.getElementById("newRolePermDetails");
 
 const userListEl = document.getElementById("userList");
 const newUserNameEl = document.getElementById("newUserName");
 const newUserPasswordEl = document.getElementById("newUserPassword");
 const newUserRoleEl = document.getElementById("newUserRole");
 const addUserBtnEl = document.getElementById("addUserBtn");
-const newUserPermsEl = document.getElementById("newUserPerms");
 
-const makeId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-
-function loadUsers() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(USERS_KEY));
-    if (raw && Array.isArray(raw.users)) return raw;
-  } catch (e) {
-    /* ignore */
-  }
-  return { users: [], currentUserId: null };
+function persist() {
+  A.saveState();
 }
 
-let userStore = loadUsers();
+function permCount(perms) {
+  return A.ALL_PERMS.filter((key) => perms[key]).length;
+}
 
-function saveUsers() {
-  try {
-    localStorage.setItem(USERS_KEY, JSON.stringify(userStore));
-  } catch (e) {
-    /* ignore */
-  }
+function usersWithRole(roleId) {
+  return store().users.filter((u) => u.roleId === roleId).length;
 }
 
 function renderPermGroups(container, perms, disabled) {
@@ -312,71 +297,35 @@ function readPermGroups(container) {
   return perms;
 }
 
-function presetPerms(role) {
-  const perms = {};
-  A.ALL_PERMS.forEach((key) => {
-    perms[key] = role === "admin" ? true : role === "student" ? A.PRESETS.student.includes(key) : false;
-  });
-  return perms;
+function isAdminRole(role) {
+  return !!role && A.isAdminPerms(role.perms);
 }
 
-function syncNewUserPerms() {
-  const role = newUserRoleEl.value;
-  renderPermGroups(newUserPermsEl, presetPerms(role), role === "admin");
-  const details = document.getElementById("newUserPermDetails");
-  if (details) details.hidden = role === "admin";
+function soleAdminGuard(user) {
+  return A.isAdminUser(user) && A.adminCount() <= 1;
 }
 
-newUserRoleEl.addEventListener("change", syncNewUserPerms);
-syncNewUserPerms();
-
-function permissionCount(user) {
-  return A.ALL_PERMS.filter((key) => user.role === "admin" || user.perms[key]).length;
+function prospectiveAdmins({
+  moveRoleId = null,
+  moveToRoleId = null,
+  editRoleId = null,
+  editPerms = null,
+} = {}) {
+  return store().users.filter((u) => {
+    let rid = u.roleId;
+    if (moveRoleId && rid === moveRoleId) rid = moveToRoleId;
+    const role = editRoleId && rid === editRoleId ? { perms: editPerms } : A.roleById(rid);
+    return role && A.isAdminPerms(role.perms);
+  }).length;
 }
 
-function renderUsers() {
-  userListEl.innerHTML = "";
-
-  if (!userStore.users.length) {
-    const empty = document.createElement("li");
-    empty.className = "group-empty";
-    empty.textContent = "No users yet. Add one below — it will be able to sign in right away.";
-    userListEl.appendChild(empty);
-    return;
-  }
-
-  userStore.users.forEach((u) => {
-    const li = document.createElement("li");
-    li.className = "group-item user-item";
-
-    const name = document.createElement("span");
-    name.className = "group-name";
-    name.textContent = u.name;
-    name.title = u.name;
-
-    const isMe = u.id === userStore.currentUserId;
-    const meta = document.createElement("span");
-    meta.className = "group-meta";
-    meta.textContent =
-      `${u.role} · ${permissionCount(u)}/${A.ALL_PERMS.length} permissions` + (isMe ? " · you" : "");
-    if (isMe) meta.classList.add("active-tag");
-
-    const actions = document.createElement("div");
-    actions.className = "group-actions";
-
-    const permsBtn = miniBtn("Permissions");
-    permsBtn.addEventListener("click", () => openPermEditor(u, li));
-
-    const deleteBtn = miniBtn("Delete", "danger");
-    deleteBtn.addEventListener("click", () => deleteUser(u));
-
-    actions.append(permsBtn, deleteBtn);
-    li.append(name, meta, actions);
-    userListEl.appendChild(li);
-  });
+function fallbackRoleFor(role) {
+  const others = store().roles.filter((r) => r.id !== role.id);
+  if (!others.length) return null;
+  return isAdminRole(role) ? others.find(isAdminRole) || others[0] : others[0];
 }
 
-function closePermEditor() {
+function closeEditor() {
   const open = document.getElementById("permEditor");
   if (open) open.remove();
 }
@@ -390,9 +339,244 @@ function field(labelText, input) {
   return wrap;
 }
 
-function openPermEditor(user, li) {
+/* ----- Roles ----- */
+
+function renderRoles() {
+  const roles = store().roles;
+  roleListEl.innerHTML = "";
+
+  if (!roles.length) {
+    const empty = document.createElement("li");
+    empty.className = "group-empty";
+    empty.textContent = "No roles yet. Add one below so it can be assigned to users.";
+    roleListEl.appendChild(empty);
+    return;
+  }
+
+  const me = A.currentUser();
+
+  roles.forEach((r) => {
+    const li = document.createElement("li");
+    li.className = "group-item role-item";
+
+    const name = document.createElement("span");
+    name.className = "group-name";
+    name.textContent = r.name;
+    name.title = r.name;
+
+    const isMine = !!me && me.roleId === r.id;
+    const meta = document.createElement("span");
+    meta.className = "group-meta";
+    meta.textContent =
+      `${permCount(r.perms)}/${A.ALL_PERMS.length} permissions · ${usersWithRole(r.id)} user(s)` +
+      (isMine ? " · your role" : "");
+    if (isMine) meta.classList.add("active-tag");
+
+    const actions = document.createElement("div");
+    actions.className = "group-actions";
+
+    const editBtn = miniBtn("Edit");
+    editBtn.addEventListener("click", () => openRoleEditor(r, li));
+
+    const fallback = fallbackRoleFor(r);
+    const wouldLoseAdmin =
+      A.adminCount() >= 1 &&
+      (!fallback || prospectiveAdmins({ moveRoleId: r.id, moveToRoleId: fallback.id }) === 0);
+
+    const deleteBtn = miniBtn("Delete", "danger");
+    deleteBtn.disabled = wouldLoseAdmin;
+    if (roles.length <= 1) deleteBtn.title = "At least one role is required";
+    else if (wouldLoseAdmin) deleteBtn.title = "Deleting it would leave the system with no admin";
+    deleteBtn.addEventListener("click", () => deleteRole(r));
+
+    actions.append(editBtn, deleteBtn);
+    li.append(name, meta, actions);
+    roleListEl.appendChild(li);
+  });
+}
+
+function openRoleEditor(role, li) {
+  if (!A.can("manageRoles")) return;
+  closeEditor();
+
+  const editor = document.createElement("div");
+  editor.className = "perm-editor";
+  editor.id = "permEditor";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.value = role.name;
+  nameInput.autocomplete = "off";
+
+  const groups = document.createElement("div");
+  groups.className = "perm-groups";
+  renderPermGroups(groups, role.perms, false);
+
+  const actions = document.createElement("div");
+  actions.className = "perm-editor-actions";
+
+  const saveBtn = miniBtn("Save", "primary");
+  const cancelBtn = miniBtn("Cancel");
+
+  saveBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim() || role.name;
+    const clash = store().roles.some(
+      (x) => x.id !== role.id && x.name.toLowerCase() === name.toLowerCase()
+    );
+    if (clash) {
+      flash(`A role called "${name}" already exists.`);
+      nameInput.focus();
+      return;
+    }
+
+    const me = A.currentUser();
+    const affectsMe = !!me && me.roleId === role.id;
+    const newPerms = A.normalizePerms(readPermGroups(groups));
+    if (A.adminCount() >= 1 && prospectiveAdmins({ editRoleId: role.id, editPerms: newPerms }) === 0) {
+      flash("This is the only admin role — it must keep every permission. Make another user admin first.");
+      return;
+    }
+    role.name = name;
+    role.perms = newPerms;
+    persist();
+    closeEditor();
+    renderRoles();
+    renderUsers();
+    flash(`Saved role "${name}".`);
+    if (affectsMe) location.reload();
+  });
+
+  cancelBtn.addEventListener("click", closeEditor);
+
+  actions.append(saveBtn, cancelBtn);
+  editor.append(field("Role name", nameInput), groups, actions);
+  li.insertAdjacentElement("afterend", editor);
+  nameInput.focus();
+  nameInput.select();
+}
+
+function deleteRole(role) {
+  if (!A.can("manageRoles")) return;
+  const fallback = fallbackRoleFor(role);
+  if (!fallback) {
+    flash("At least one role is required.");
+    return;
+  }
+  if (
+    A.adminCount() >= 1 &&
+    prospectiveAdmins({ moveRoleId: role.id, moveToRoleId: fallback.id }) === 0
+  ) {
+    flash("Can't delete this role — it would leave the system with no admin.");
+    return;
+  }
+  if (!confirm(`Delete role "${role.name}"?`)) return;
+
+  const affectedMe = !!A.currentUser() && A.currentUser().roleId === role.id;
+  store().users.forEach((u) => {
+    if (u.roleId === role.id) u.roleId = fallback.id;
+  });
+  store().roles = store().roles.filter((r) => r.id !== role.id);
+  persist();
+  closeEditor();
+  renderRoles();
+  renderUsers();
+  flash(`Role "${role.name}" deleted.`);
+  if (affectedMe) location.reload();
+}
+
+function addRole() {
+  if (!A.can("manageRoles")) return;
+  const name = newRoleNameEl.value.trim();
+  if (!name) {
+    flash("Enter a name for the new role.");
+    newRoleNameEl.focus();
+    return;
+  }
+  if (store().roles.some((r) => r.name.toLowerCase() === name.toLowerCase())) {
+    flash(`A role called "${name}" already exists.`);
+    newRoleNameEl.focus();
+    return;
+  }
+  const role = { id: A.uid(), name, perms: A.normalizePerms(readPermGroups(newRolePermsEl)) };
+  store().roles.push(role);
+  persist();
+  newRoleNameEl.value = "";
+  renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
+  renderRoles();
+  fillRoleSelect();
+  flash(`Role "${name}" created.`);
+  newRoleNameEl.focus();
+}
+
+addRoleBtnEl.addEventListener("click", addRole);
+newRoleNameEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addRole();
+  }
+});
+
+/* ----- Users ----- */
+
+function fillRoleSelect() {
+  newUserRoleEl.innerHTML = "";
+  store().roles.forEach((r) => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = r.name;
+    newUserRoleEl.appendChild(opt);
+  });
+}
+
+function renderUsers() {
+  userListEl.innerHTML = "";
+
+  if (!store().users.length) {
+    const empty = document.createElement("li");
+    empty.className = "group-empty";
+    empty.textContent = "No users yet. Add one below — it will be able to sign in right away.";
+    userListEl.appendChild(empty);
+    return;
+  }
+
+  store().users.forEach((u) => {
+    const li = document.createElement("li");
+    li.className = "group-item user-item";
+
+    const name = document.createElement("span");
+    name.className = "group-name";
+    name.textContent = u.name;
+    name.title = u.name;
+
+    const role = A.roleOf(u);
+    const isMe = u.id === store().currentUserId;
+    const meta = document.createElement("span");
+    meta.className = "group-meta";
+    meta.textContent =
+      `${role ? role.name : "no role"} · ${role ? permCount(role.perms) : 0}/${A.ALL_PERMS.length} permissions` +
+      (isMe ? " · you" : "");
+    if (isMe) meta.classList.add("active-tag");
+
+    const actions = document.createElement("div");
+    actions.className = "group-actions";
+
+    const editBtn = miniBtn("Edit");
+    editBtn.addEventListener("click", () => openUserEditor(u, li));
+
+    const deleteBtn = miniBtn("Delete", "danger");
+    deleteBtn.disabled = soleAdminGuard(u);
+    if (deleteBtn.disabled) deleteBtn.title = "This is the only admin — it can't be deleted";
+    deleteBtn.addEventListener("click", () => deleteUser(u));
+
+    actions.append(editBtn, deleteBtn);
+    li.append(name, meta, actions);
+    userListEl.appendChild(li);
+  });
+}
+
+function openUserEditor(user, li) {
   if (!A.can("manageUsers")) return;
-  closePermEditor();
+  closeEditor();
 
   const editor = document.createElement("div");
   editor.className = "perm-editor";
@@ -413,21 +597,13 @@ function openPermEditor(user, li) {
   top.append(field("Name", nameInput), field("New password", passInput));
 
   const roleSel = document.createElement("select");
-  ["admin", "student", "custom"].forEach((r) => {
+  store().roles.forEach((r) => {
     const opt = document.createElement("option");
-    opt.value = r;
-    opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+    opt.value = r.id;
+    opt.textContent = r.name;
     roleSel.appendChild(opt);
   });
-  roleSel.value = user.role;
-
-  const groups = document.createElement("div");
-  groups.className = "perm-groups";
-  renderPermGroups(groups, user.perms, user.role === "admin");
-
-  roleSel.addEventListener("change", () => {
-    renderPermGroups(groups, presetPerms(roleSel.value), roleSel.value === "admin");
-  });
+  roleSel.value = user.roleId;
 
   const actions = document.createElement("div");
   actions.className = "perm-editor-actions";
@@ -437,7 +613,7 @@ function openPermEditor(user, li) {
 
   saveBtn.addEventListener("click", () => {
     const name = nameInput.value.trim() || user.name;
-    const clash = userStore.users.some(
+    const clash = store().users.some(
       (x) => x.id !== user.id && x.name.toLowerCase() === name.toLowerCase()
     );
     if (clash) {
@@ -450,23 +626,27 @@ function openPermEditor(user, li) {
       passInput.focus();
       return;
     }
+    if (soleAdminGuard(user) && roleSel.value !== user.roleId) {
+      flash("This is the only admin — its role can't be changed. Make another user admin first.");
+      return;
+    }
 
-    const wasMe = user.id === userStore.currentUserId;
+    const wasMe = user.id === store().currentUserId;
     user.name = name;
     if (passInput.value) user.passwordHash = A.hashPassword(passInput.value);
-    user.role = roleSel.value;
-    user.perms = A.permsFor(user.role, readPermGroups(groups));
-    saveUsers();
-    closePermEditor();
+    user.roleId = roleSel.value;
+    persist();
+    closeEditor();
     renderUsers();
+    renderRoles();
     flash(`Saved "${user.name}".`);
     if (wasMe) location.reload();
   });
 
-  cancelBtn.addEventListener("click", closePermEditor);
+  cancelBtn.addEventListener("click", closeEditor);
 
   actions.append(saveBtn, cancelBtn);
-  editor.append(top, field("Role", roleSel), groups, actions);
+  editor.append(top, field("Role", roleSel), actions);
   li.insertAdjacentElement("afterend", editor);
   nameInput.focus();
   nameInput.select();
@@ -474,13 +654,18 @@ function openPermEditor(user, li) {
 
 function deleteUser(user) {
   if (!A.can("manageUsers")) return;
+  if (soleAdminGuard(user)) {
+    flash("This is the only admin account — it can't be deleted.");
+    return;
+  }
   if (!confirm(`Delete user "${user.name}"?`)) return;
-  const wasMe = user.id === userStore.currentUserId;
-  userStore.users = userStore.users.filter((x) => x.id !== user.id);
-  if (wasMe) userStore.currentUserId = null;
-  saveUsers();
-  closePermEditor();
+  const wasMe = user.id === store().currentUserId;
+  store().users = store().users.filter((x) => x.id !== user.id);
+  if (wasMe) store().currentUserId = null;
+  persist();
+  closeEditor();
   renderUsers();
+  renderRoles();
   flash(`"${user.name}" deleted.`);
   if (wasMe) location.reload();
 }
@@ -489,14 +674,14 @@ function addUser() {
   if (!A.can("manageUsers")) return;
   const name = newUserNameEl.value.trim();
   const password = newUserPasswordEl.value;
-  const role = newUserRoleEl.value;
+  const roleId = newUserRoleEl.value;
 
   if (!name) {
     flash("Enter a name for the new user.");
     newUserNameEl.focus();
     return;
   }
-  if (userStore.users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+  if (store().users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
     flash(`A user named "${name}" already exists.`);
     newUserNameEl.focus();
     return;
@@ -506,21 +691,24 @@ function addUser() {
     newUserPasswordEl.focus();
     return;
   }
+  if (!A.roleById(roleId)) {
+    flash("Pick a role for the new user.");
+    newUserRoleEl.focus();
+    return;
+  }
 
-  const perms = role === "admin" ? presetPerms("admin") : readPermGroups(newUserPermsEl);
-  userStore.users.push({
-    id: makeId(),
+  store().users.push({
+    id: A.uid(),
     name,
     passwordHash: A.hashPassword(password),
-    role,
-    perms: A.permsFor(role, perms),
+    roleId,
   });
-  saveUsers();
+  persist();
 
   newUserNameEl.value = "";
   newUserPasswordEl.value = "";
-  syncNewUserPerms();
   renderUsers();
+  renderRoles();
   flash(`"${name}" can now sign in.`);
   newUserNameEl.focus();
 }
@@ -539,6 +727,9 @@ newUserNameEl.addEventListener("keydown", (e) => {
   }
 });
 
+renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
+renderRoles();
+fillRoleSelect();
 renderUsers();
 
 document.addEventListener("minasettings:change", sync);
