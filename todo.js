@@ -1,4 +1,5 @@
 const STORAGE_KEY = "portfolio.todos";
+const Auth = window.MinaAuth || { can: () => true };
 
 const form = document.getElementById("todoForm");
 const input = document.getElementById("todoInput");
@@ -12,8 +13,6 @@ const siteNav = document.getElementById("siteNav");
 
 let todos = loadTodos();
 let currentFilter = "all";
-
-menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
 
 function loadTodos() {
   try {
@@ -35,6 +34,8 @@ function getVisibleTodos() {
 
 function render() {
   const visible = getVisibleTodos();
+  const canToggle = Auth.can("completeTodo");
+  const canDelete = Auth.can("deleteTodo");
   list.innerHTML = "";
 
   visible.forEach((todo) => {
@@ -45,6 +46,7 @@ function render() {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = todo.done;
+    checkbox.hidden = !canToggle;
     checkbox.addEventListener("change", () => toggleTodo(todo.id));
 
     const span = document.createElement("span");
@@ -55,6 +57,7 @@ function render() {
     del.className = "delete-btn";
     del.innerHTML = "&times;";
     del.setAttribute("aria-label", "Delete task");
+    del.hidden = !canDelete;
     del.addEventListener("click", () => deleteTodo(todo.id));
 
     li.append(checkbox, span, del);
@@ -71,12 +74,14 @@ function render() {
 }
 
 function addTodo(text) {
+  if (!Auth.can("addTodo")) return;
   todos.unshift({ id: Date.now().toString(), text: text.trim(), done: false });
   saveTodos();
   render();
 }
 
 function toggleTodo(id) {
+  if (!Auth.can("completeTodo")) return;
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
   saveTodos();
@@ -84,6 +89,7 @@ function toggleTodo(id) {
 }
 
 function deleteTodo(id) {
+  if (!Auth.can("deleteTodo")) return;
   todos = todos.filter((t) => t.id !== id);
   saveTodos();
   render();
@@ -91,6 +97,7 @@ function deleteTodo(id) {
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
+  if (!Auth.can("addTodo")) return;
   if (!input.value.trim()) return;
   addTodo(input.value);
   input.value = "";
@@ -106,6 +113,7 @@ filtersEl.addEventListener("click", (e) => {
 });
 
 clearCompletedBtn.addEventListener("click", () => {
+  if (!Auth.can("deleteTodo")) return;
   todos = todos.filter((t) => !t.done);
   saveTodos();
   render();

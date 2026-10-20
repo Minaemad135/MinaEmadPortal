@@ -6,6 +6,7 @@
   <title>Settings | MinaEmad</title>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
   <link rel="stylesheet" href="settings.css" />
 </head>
 <body>
@@ -16,6 +17,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
       <li><a href="attendance.html">Attendance</a></li>
+      <li><a href="todo.html">Todo</a></li>
       <li><a href="settings.html" class="active">Settings</a></li>
     </ul>
     <div class="nav-actions">
@@ -28,7 +30,54 @@
       <h1>Settings</h1>
       <p class="subtitle">Customize how MinaEmad looks. Changes apply instantly and are saved in this browser.</p>
 
-      <div class="settings-group">
+      <div class="settings-group" data-perm="manageRoles">
+        <h2>Roles</h2>
+        <p class="group-note">
+          Create named roles and choose exactly which pages and actions they allow. Assign a role to
+          a user in the Users section below.
+        </p>
+        <ul class="group-list role-list" id="roleList"></ul>
+
+        <div class="user-add">
+          <div class="user-add-row">
+            <input type="text" id="newRoleName" placeholder="New role name" autocomplete="off" />
+            <button type="button" class="btn" id="addRoleBtn">Add role</button>
+          </div>
+          <details class="perm-details" id="newRolePermDetails">
+            <summary>Permissions</summary>
+            <div class="perm-groups" id="newRolePerms"></div>
+          </details>
+        </div>
+      </div>
+
+      <div class="settings-group" data-perm="manageUsers">
+        <h2>Users</h2>
+        <p class="group-note">
+          Add people by name and password, then assign one of the roles you created above.
+        </p>
+        <ul class="user-list" id="userList"></ul>
+
+        <div class="user-add">
+          <div class="user-add-row">
+            <input type="text" id="newUserName" placeholder="Name" autocomplete="off" />
+            <input type="password" id="newUserPassword" placeholder="Password" autocomplete="new-password" />
+            <select id="newUserRole"></select>
+            <button type="button" class="btn" id="addUserBtn">Add user</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group" data-perm="manageClasses">
+        <h2>Classes / groups</h2>
+        <p class="group-note">Add, rename or remove the classes used on the Attendance page. Changes save instantly.</p>
+        <ul class="group-list" id="groupList"></ul>
+        <div class="group-add">
+          <input type="text" id="newGroupName" placeholder="New class name" autocomplete="off" />
+          <button type="button" class="btn" id="addGroupBtn">Add class</button>
+        </div>
+      </div>
+
+      <div class="settings-group" data-perm="changeAppearance">
         <h2>Theme</h2>
         <div class="option-grid" id="themeOptions">
           <button type="button" class="option" data-theme="midnight" aria-pressed="false">
@@ -69,7 +118,7 @@
         </div>
       </div>
 
-      <div class="settings-group">
+      <div class="settings-group" data-perm="changeAppearance">
         <h2>Design</h2>
         <div class="option-grid" id="designOptions">
           <button type="button" class="option" data-design="classic" aria-pressed="false">
@@ -95,16 +144,6 @@
         </div>
       </div>
 
-      <div class="settings-group">
-        <h2>Classes / groups</h2>
-        <p class="group-note">Add, rename or remove the classes used on the Attendance page. Changes save instantly.</p>
-        <ul class="group-list" id="groupList"></ul>
-        <div class="group-add">
-          <input type="text" id="newGroupName" placeholder="New class name" autocomplete="off" />
-          <button type="button" class="btn" id="addGroupBtn">Add class</button>
-        </div>
-      </div>
-
       <p id="settingsStatus" class="status" role="status"></p>
     </section>
   </main>
@@ -113,6 +152,8 @@
     <p><a href="index.html">&larr; Back to portfolio</a></p>
   </footer>
 
+  <script src="sidebar.js"></script>
+  <script src="auth.js"></script>
   <script src="settings.js"></script>
 </body>
 </html>

@@ -323,8 +323,13 @@ h3 {
   border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 1.4rem;
+  line-height: 1;
   cursor: pointer;
   box-shadow: var(--shadow);
+  transition:
+    left var(--transition),
+    border-color var(--transition),
+    color var(--transition);
 }
 
 .menu-toggle:hover {
@@ -468,9 +473,17 @@ footer a {
   text-decoration: none;
 }
 
+.nav-scrim {
+  display: none;
+}
+
 @media (max-width: 900px) {
   body {
     padding-left: 0;
+  }
+
+  body.nav-open {
+    overflow: hidden;
   }
 
   .sidebar {
@@ -486,6 +499,29 @@ footer a {
 
   .menu-toggle {
     display: grid;
+  }
+
+  body.nav-open .menu-toggle {
+    left: calc(230px + 0.85rem);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+  }
+
+  .nav-scrim.show {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
