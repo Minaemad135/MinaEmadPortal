@@ -83,7 +83,6 @@
     }
 
     btn.addEventListener("click", () => {
-      if (window.MinaAuth && !window.MinaAuth.can("changeAppearance")) return;
       save({ theme: isDark() ? LIGHT_THEME : DARK_THEME });
     });
 

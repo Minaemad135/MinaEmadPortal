@@ -30,8 +30,8 @@
       <h1>Attendance Plan</h1>
       <p class="subtitle">Pick one or more attendance days, add special days with titles, then take attendance.</p>
 
-      <div class="panel toolbar">
-        <div class="att-controls">
+      <div class="panel toolbar" data-collapse>
+        <div class="att-controls" data-collapse>
           <label class="control" data-perm="manageDays">
             <span>Class / group</span>
             <select id="groupSelect"></select>
@@ -51,7 +51,7 @@
           </div>
         </div>
 
-        <div class="att-controls">
+        <div class="att-controls" data-collapse>
           <div class="control" data-perm="manageDays">
             <span>Attendance days (select one or more)</span>
             <div class="weekdays" id="weekdays"></div>
@@ -146,6 +146,7 @@
     </div>
   </div>
 
+  <script src="sidebar.js"></script>
   <script src="auth.js"></script>
   <script src="attendance.js"></script>
 </body>

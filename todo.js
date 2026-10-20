@@ -14,8 +14,6 @@ const siteNav = document.getElementById("siteNav");
 let todos = loadTodos();
 let currentFilter = "all";
 
-menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
-
 function loadTodos() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];

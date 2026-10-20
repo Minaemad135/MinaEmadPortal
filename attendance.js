@@ -32,8 +32,6 @@ const modalSaveBtn = document.getElementById("modalSave");
 const menuToggle = document.getElementById("menuToggle");
 const siteNav = document.getElementById("siteNav");
 
-menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
-
 const DOW = [
   { value: 0, label: "Sun" },
   { value: 1, label: "Mon" },

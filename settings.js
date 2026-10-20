@@ -7,8 +7,6 @@ const status = document.getElementById("settingsStatus");
 const menuToggle = document.getElementById("menuToggle");
 const siteNav = document.getElementById("siteNav");
 
-menuToggle.addEventListener("click", () => siteNav.classList.toggle("open"));
-
 function setPressed(nodes, key, value) {
   nodes.forEach((node) => node.setAttribute("aria-pressed", String(node.dataset[key] === value)));
 }

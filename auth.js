@@ -285,6 +285,16 @@
     document.querySelectorAll("[data-perm]").forEach((node) => {
       if (!can(node.dataset.perm)) node.hidden = true;
     });
+    collapseEmpty();
+  }
+
+  function collapseEmpty() {
+    const nodes = [...document.querySelectorAll("[data-collapse], .panel")];
+    nodes.sort((a, b) => a.getElementsByTagName("*").length - b.getElementsByTagName("*").length);
+    nodes.forEach((node) => {
+      const kids = [...node.children];
+      if (kids.length && kids.every((k) => k.hidden)) node.hidden = true;
+    });
   }
 
   function renderSidebar() {
@@ -305,7 +315,7 @@
     });
 
     const themeToggle = document.getElementById("themeToggle");
-    if (themeToggle) themeToggle.hidden = !can("changeAppearance");
+    if (themeToggle) themeToggle.hidden = false;
 
     const user = currentUser();
     if (!user) return;
