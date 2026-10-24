@@ -2,6 +2,7 @@ const S = window.MinaSettings;
 
 const themeOptions = document.querySelectorAll("#themeOptions .option");
 const designOptions = document.querySelectorAll("#designOptions .option");
+const markOptions = document.querySelectorAll("#markOptions .option");
 const status = document.getElementById("settingsStatus");
 
 function setPressed(nodes, key, value) {
@@ -12,6 +13,7 @@ function sync() {
   const s = S.get();
   setPressed(themeOptions, "theme", s.theme);
   setPressed(designOptions, "design", s.design);
+  if (markOptions.length) setPressed(markOptions, "mark", s.markStyle || "classic");
 }
 
 function flash(message) {
@@ -33,6 +35,14 @@ designOptions.forEach((btn) =>
     if (!A.can("changeAppearance")) return;
     S.save({ design: btn.dataset.design });
     flash(`Design set to ${btn.querySelector(".option-label").textContent}.`);
+  })
+);
+
+markOptions.forEach((btn) =>
+  btn.addEventListener("click", () => {
+    if (!A.can("changeAppearance")) return;
+    S.save({ markStyle: btn.dataset.mark });
+    flash(`Attendance mark style set to ${btn.querySelector(".option-label").textContent.replace(" (Default)", "")}.`);
   })
 );
 

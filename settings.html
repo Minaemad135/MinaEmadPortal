@@ -141,27 +141,22 @@
       </div>
 
       <div class="settings-group" data-perm="changeAppearance">
-        <h2>Design</h2>
-        <div class="option-grid" id="designOptions">
-          <button type="button" class="option" data-design="classic" aria-pressed="false">
-            <span class="shape" data-design-preview="classic"></span>
-            <span class="option-label">Classic</span>
+        <h2>Attendance Mark Style</h2>
+        <p class="group-note">Change how Present/Absent look in the attendance table. Original style is the default.</p>
+        <div class="option-grid mark-style-grid" id="markOptions">
+          <button type="button" class="option mark-option" data-mark="classic" aria-pressed="false">
+            <span class="mark-demo" data-mark-demo="classic">
+              <span class="mark-demo-cell present">✓</span>
+              <span class="mark-demo-cell absent">✗</span>
+            </span>
+            <span class="option-label">Classic (Default)</span>
           </button>
-          <button type="button" class="option" data-design="minimal" aria-pressed="false">
-            <span class="shape" data-design-preview="minimal"></span>
+          <button type="button" class="option mark-option" data-mark="minimal" aria-pressed="false">
+            <span class="mark-demo" data-mark-demo="minimal">
+              <span class="mark-demo-cell present">✓</span>
+              <span class="mark-demo-cell absent">✗</span>
+            </span>
             <span class="option-label">Minimal</span>
-          </button>
-          <button type="button" class="option" data-design="rounded" aria-pressed="false">
-            <span class="shape" data-design-preview="rounded"></span>
-            <span class="option-label">Rounded</span>
-          </button>
-          <button type="button" class="option" data-design="sharp" aria-pressed="false">
-            <span class="shape" data-design-preview="sharp"></span>
-            <span class="option-label">Sharp</span>
-          </button>
-          <button type="button" class="option" data-design="glass" aria-pressed="false">
-            <span class="shape" data-design-preview="glass"></span>
-            <span class="option-label">Glass</span>
           </button>
         </div>
       </div>

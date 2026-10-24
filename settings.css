@@ -485,3 +485,45 @@
     width: 100%;
   }
 }
+
+.mark-style-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.mark-option {
+  align-items: stretch;
+  text-align: left;
+}
+
+.mark-demo {
+  width: 100%;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  overflow: hidden;
+}
+
+.mark-demo-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.mark-demo-cell.present {
+  background: color-mix(in srgb, var(--present) 35%, transparent);
+  color: var(--present);
+}
+
+.mark-demo-cell.absent {
+  background: color-mix(in srgb, var(--absent) 35%, transparent);
+  color: var(--absent);
+}
+
+.mark-demo[data-mark-demo="minimal"] .mark-demo-cell {
+  background: transparent;
+}

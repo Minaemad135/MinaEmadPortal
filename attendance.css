@@ -728,6 +728,62 @@
   color: var(--absent);
 }
 
+html[data-mark-style="circle"] .mark {
+  margin: 4px auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+html[data-mark-style="rounded"] .mark {
+  margin: 4px auto;
+  width: calc(100% - 12px);
+  min-height: 32px;
+  border-radius: 10px;
+}
+
+html[data-mark-style="bubble"] .mark {
+  margin: 4px auto;
+  width: calc(100% - 8px);
+  min-height: 34px;
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+html[data-mark-style="strip"] .mark {
+  width: 100%;
+  border-radius: 0;
+  position: relative;
+}
+
+html[data-mark-style="strip"] .mark.present::before,
+html[data-mark-style="strip"] .mark.absent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+html[data-mark-style="strip"] .mark.present::before {
+  background: var(--present);
+}
+
+html[data-mark-style="strip"] .mark.absent::before {
+  background: var(--absent);
+}
+
+html[data-mark-style="strip"] .mark.present {
+  padding-left: 10px;
+  background: color-mix(in srgb, var(--present) 18%, transparent);
+}
+
+html[data-mark-style="strip"] .mark.absent {
+  padding-left: 10px;
+  background: color-mix(in srgb, var(--absent) 18%, transparent);
+}
+
 .att-table thead th.is-today {
   background: color-mix(in srgb, var(--accent) 42%, var(--surface));
   color: var(--text);
@@ -1419,4 +1475,51 @@
   .attendance h1 {
     font-size: 1.6rem;
   }
+}
+
+/* Mark style previews in settings */
+.mark-preview {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.mark-preview-cell {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.mark-preview-cell.present {
+  color: var(--present);
+  background: color-mix(in srgb, var(--present) 35%, transparent);
+}
+
+.mark-preview-cell.absent {
+  color: var(--absent);
+  background: color-mix(in srgb, var(--absent) 35%, transparent);
+}
+
+.mark-preview[data-mark-preview="minimal"] .mark-preview-cell {
+  background: transparent;
+}
+
+html[data-mark-style="minimal"] .mark {
+  background: transparent;
+}
+
+html[data-mark-style="minimal"] .mark.present {
+  background: transparent;
+  color: var(--present);
+}
+
+html[data-mark-style="minimal"] .mark.absent {
+  background: transparent;
+  color: var(--absent);
 }

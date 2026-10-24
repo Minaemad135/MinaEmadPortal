@@ -4,14 +4,16 @@
   const DEFAULTS = {
     theme: "auto",
     design: "classic",
+    markStyle: "classic",
   };
 
   const THEMES = ["auto", "midnight", "daylight", "ocean", "sunset", "forest", "amoled", "nord"];
   const DESIGNS = ["classic", "minimal", "rounded", "sharp", "glass"];
+  const MARK_STYLES = ["classic", "minimal"];
   const DARK_THEMES = ["midnight", "ocean", "sunset", "forest", "amoled", "nord"];
   const LIGHT_THEME = "daylight";
   const DARK_THEME = "midnight";
-  const AUTO_THEME_KEY = "mina.theme.auto"; 
+  const AUTO_THEME_KEY = "mina.theme.auto";  
 
   function getSystemTheme() {
     if (typeof window === "undefined" || !window.matchMedia) return DARK_THEME;
@@ -37,7 +39,8 @@
     const s = { ...DEFAULTS, ...raw };
     const theme = THEMES.includes(s.theme) ? s.theme : DEFAULTS.theme;
     const design = DESIGNS.includes(s.design) ? s.design : DEFAULTS.design;
-    return { theme, design };
+    const markStyle = MARK_STYLES.includes(s.markStyle) ? s.markStyle : DEFAULTS.markStyle;
+    return { theme, design, markStyle };
   }
 
   let settings = normalize(read());
@@ -48,6 +51,7 @@
     root.dataset.theme = resolved;
     root.dataset.themePref = settings.theme;
     root.dataset.design = settings.design;
+    root.dataset.markStyle = (settings.markStyle || DEFAULTS.markStyle);
   }
 
   function emit() {
@@ -79,6 +83,7 @@
   }
 
   apply();
+  try { document.documentElement.dataset.markStyle = settings.markStyle || 'classic'; } catch(e){}
 
   function isDark() {
     if (settings.theme === "auto") {
@@ -150,5 +155,6 @@
     defaults: { ...DEFAULTS },
     themes: THEMES.slice(),
     designs: DESIGNS.slice(),
+    markStyles: MARK_STYLES.slice(),
   };
 })();
