@@ -93,6 +93,30 @@ html {
   --btn-text: #0b1f16;
 }
 
+:root[data-theme="amoled"] {
+  --bg: #000000;
+  --surface: #050505;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --error: #f87171;
+  --border: #1a1a1a;
+  --header-bg: rgba(0, 0, 0, 0.95);
+  --btn-text: #000000;
+}
+
+:root[data-theme="nord"] {
+  --bg: #2e3440;
+  --surface: #3b4252;
+  --text: #eceff4;
+  --muted: #d8dee9;
+  --accent: #88c0d0;
+  --error: #bf616a;
+  --border: #4c566a;
+  --header-bg: rgba(46, 52, 64, 0.92);
+  --btn-text: #2e3440;
+}
+
 /* ---- Designs ---- */
 :root[data-design="classic"] {
   --radius: 12px;

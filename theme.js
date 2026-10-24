@@ -2,15 +2,28 @@
   const KEY = "mina.settings";
 
   const DEFAULTS = {
-    theme: "midnight",
+    theme: "auto",
     design: "classic",
   };
 
-  const THEMES = ["midnight", "daylight", "ocean", "sunset", "forest"];
+  const THEMES = ["auto", "midnight", "daylight", "ocean", "sunset", "forest", "amoled", "nord"];
   const DESIGNS = ["classic", "minimal", "rounded", "sharp", "glass"];
-  const DARK_THEMES = ["midnight", "ocean", "sunset", "forest"];
+  const DARK_THEMES = ["midnight", "ocean", "sunset", "forest", "amoled", "nord"];
   const LIGHT_THEME = "daylight";
   const DARK_THEME = "midnight";
+  const AUTO_THEME_KEY = "mina.theme.auto"; 
+
+  function getSystemTheme() {
+    if (typeof window === "undefined" || !window.matchMedia) return DARK_THEME;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? LIGHT_THEME : DARK_THEME;
+  }
+
+  function resolveTheme(theme) {
+    if (theme === "auto") {
+      return getSystemTheme();
+    }
+    return THEMES.includes(theme) && theme !== "auto" ? theme : DEFAULTS.theme === "auto" ? getSystemTheme() : DEFAULTS.theme;
+  }
 
   function read() {
     try {
@@ -22,17 +35,18 @@
 
   function normalize(raw) {
     const s = { ...DEFAULTS, ...raw };
-    return {
-      theme: THEMES.includes(s.theme) ? s.theme : DEFAULTS.theme,
-      design: DESIGNS.includes(s.design) ? s.design : DEFAULTS.design,
-    };
+    const theme = THEMES.includes(s.theme) ? s.theme : DEFAULTS.theme;
+    const design = DESIGNS.includes(s.design) ? s.design : DEFAULTS.design;
+    return { theme, design };
   }
 
   let settings = normalize(read());
 
   function apply() {
     const root = document.documentElement;
-    root.dataset.theme = settings.theme;
+    const resolved = resolveTheme(settings.theme);
+    root.dataset.theme = resolved;
+    root.dataset.themePref = settings.theme;
     root.dataset.design = settings.design;
   }
 
@@ -67,7 +81,12 @@
   apply();
 
   function isDark() {
-    return DARK_THEMES.includes(settings.theme);
+    if (settings.theme === "auto") {
+      return getSystemTheme() !== LIGHT_THEME;
+    }
+    if (settings.theme === LIGHT_THEME) return false;
+    if (DARK_THEMES.includes(settings.theme)) return true;
+    return false;
   }
 
   function initToggle() {
@@ -78,16 +97,40 @@
       const dark = isDark();
       btn.textContent = dark ? "\u2600" : "\u263E";
       btn.setAttribute("aria-pressed", String(dark));
-      btn.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
-      btn.title = dark ? "Light mode" : "Dark mode";
+      btn.setAttribute("aria-label", settings.theme === "auto" ? "Auto theme (toggle to manual)" : dark ? "Switch to light mode" : "Switch to dark mode");
+      btn.title = settings.theme === "auto" ? "Auto (system)" : dark ? "Light mode" : "Dark mode";
     }
 
     btn.addEventListener("click", () => {
-      save({ theme: isDark() ? LIGHT_THEME : DARK_THEME });
+      if (settings.theme === "auto") {
+        save({ theme: DARK_THEME });
+        return;
+      }
+      if (isDark()) {
+        save({ theme: LIGHT_THEME });
+        return;
+      }
+      save({ theme: DARK_THEME });
     });
 
     document.addEventListener("minasettings:change", update);
     update();
+
+    if (window.matchMedia) {
+      const mq = window.matchMedia("(prefers-color-scheme: light)");
+      const handler = () => {
+        if (settings.theme === "auto") {
+          apply();
+          emit();
+        }
+        update();
+      };
+      if (mq.addEventListener) {
+        mq.addEventListener("change", handler);
+      } else if (mq.addListener) {
+        mq.addListener(handler);
+      }
+    }
   }
 
   if (document.readyState === "loading") {
@@ -101,6 +144,9 @@
     save,
     reset,
     isDark,
+    apply,
+    resolveTheme,
+    getSystemTheme,
     defaults: { ...DEFAULTS },
     themes: THEMES.slice(),
     designs: DESIGNS.slice(),
