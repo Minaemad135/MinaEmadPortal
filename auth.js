@@ -11,8 +11,8 @@
     {
       page: "Attendance",
       perms: [
-        { key: "viewAttendance", label: "Open attendance page" },
-        { key: "markAttendance", label: "Mark present / absent" },
+        { key: "viewAttendance", label: "Open attendance & points pages" },
+        { key: "markAttendance", label: "Mark attendance & change points" },
         { key: "addStudent", label: "Add students" },
         { key: "editStudent", label: "Edit students" },
         { key: "deleteStudent", label: "Remove students" },
@@ -65,6 +65,7 @@
   const PAGE_PERM = {
     home: "viewHome",
     attendance: "viewAttendance",
+    points: "viewAttendance",
     settings: "viewSettings",
     todo: "viewTodo",
   };
@@ -225,6 +226,7 @@
   function pageKey() {
     const file = location.pathname.split("/").pop().toLowerCase();
     if (file === "attendance.html") return "attendance";
+    if (file === "points.html") return "points";
     if (file === "settings.html") return "settings";
     if (file === "todo.html") return "todo";
     return "home";
@@ -523,11 +525,13 @@
       const href = (link.getAttribute("href") || "").toLowerCase();
       const key = href.includes("attendance")
         ? "attendance"
-        : href.includes("settings")
-          ? "settings"
-          : href.includes("todo")
-            ? "todo"
-            : "home";
+        : href.includes("points")
+          ? "points"
+          : href.includes("settings")
+            ? "settings"
+            : href.includes("todo")
+              ? "todo"
+              : "home";
       const li = link.closest("li");
       if (li) li.hidden = !can(PAGE_PERM[key]);
     });
