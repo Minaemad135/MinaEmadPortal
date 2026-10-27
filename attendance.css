@@ -1,6 +1,8 @@
 :root {
   --present: #22c55e;
   --absent: #ef4444;
+  --warn: #f59e0b;
+  --violet: #a855f7;
 }
 
 .attendance {
@@ -762,6 +764,601 @@
 
 .sum-col .a {
   color: var(--absent);
+}
+
+.tab-nav {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 1.25rem;
+}
+
+.tab-btn {
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background var(--transition);
+}
+
+.tab-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tab-btn:hover:not(.active) {
+  border-color: var(--accent);
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+  align-items: start;
+}
+
+.report-card {
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.report-card--wide {
+  grid-column: 1 / -1;
+}
+
+.reports-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.report-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.card-sub {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0 0 0.9rem;
+}
+
+.report-empty {
+  color: var(--muted);
+  font-size: 0.88rem;
+  padding: 1.25rem 0.25rem;
+  text-align: center;
+}
+
+.report-empty[hidden] {
+  display: none;
+}
+
+/* ---- Range picker ---- */
+
+.report-panel {
+  width: 100%;
+}
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.report-head-text h2 {
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.report-head-text .subtitle {
+  margin-bottom: 0;
+}
+
+.range-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.75rem;
+}
+
+.range-bar .control input {
+  width: 150px;
+}
+
+.range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: 999px;
+}
+
+.range-presets .seg {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--transition),
+    color var(--transition);
+}
+
+.range-presets .seg:hover {
+  color: var(--text);
+}
+
+.range-presets .seg.active {
+  background: var(--accent);
+  color: var(--btn-text);
+}
+
+.range-summary {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ---- KPI cards ---- */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.8rem 0.95rem;
+}
+
+.kpi-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.kpi-value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.kpi-sub {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* ---- Charts ---- */
+
+.chart {
+  min-width: 0;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: var(--font-sans);
+  overflow: visible;
+}
+
+.chart-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.chart-empty {
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 2rem 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.chart-donut {
+  display: flex;
+  justify-content: center;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex: none;
+}
+
+.swatch--present {
+  background: color-mix(in srgb, var(--present) 55%, transparent);
+  border-color: var(--present);
+}
+
+.swatch--absent {
+  background: color-mix(in srgb, var(--absent) 55%, transparent);
+  border-color: var(--absent);
+}
+
+.swatch--none {
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--muted) 40%, transparent) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.swatch--excellent {
+  background: color-mix(in srgb, var(--present) 55%, transparent);
+  border-color: var(--present);
+}
+
+.swatch--good {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: var(--accent);
+}
+
+.swatch--warning {
+  background: color-mix(in srgb, var(--warn) 55%, transparent);
+  border-color: var(--warn);
+}
+
+.swatch--risk {
+  background: color-mix(in srgb, var(--absent) 55%, transparent);
+  border-color: var(--absent);
+}
+
+.swatch--nodata {
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+  border-color: var(--border);
+}
+
+/* SVG primitives */
+
+.ch-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.ch-axis-label {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+}
+
+.ch-value-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+
+.ch-center-value {
+  fill: var(--text);
+  font-size: 26px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+}
+
+.ch-center-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+}
+
+.ch-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ch-area {
+  opacity: 1;
+}
+
+.ch-grad-top {
+  stop-color: var(--accent);
+  stop-opacity: 0.35;
+}
+
+.ch-grad-bottom {
+  stop-color: var(--accent);
+  stop-opacity: 0;
+}
+
+.ch-dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.ch-bar {
+  fill: var(--accent);
+}
+
+.ch-bar-track {
+  fill: color-mix(in srgb, var(--muted) 16%, transparent);
+}
+
+.ch-bar--present {
+  fill: var(--present);
+}
+
+.ch-bar--absent {
+  fill: var(--absent);
+  fill-opacity: 0.75;
+}
+
+.ch-bar--accent {
+  fill: var(--accent);
+}
+
+.ch-bar--violet {
+  fill: var(--violet);
+}
+
+.ch-bar--excellent {
+  fill: var(--present);
+}
+
+.ch-bar--good {
+  fill: var(--accent);
+}
+
+.ch-bar--warning {
+  fill: var(--warn);
+}
+
+.ch-bar--risk {
+  fill: var(--absent);
+}
+
+.ch-bar--nodata {
+  fill: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+/* ---- Heatmap ---- */
+
+.heatmap-scroll {
+  overflow: auto;
+  max-height: 430px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.heatmap {
+  border-collapse: separate;
+  border-spacing: 2px;
+  padding: 0.4rem;
+}
+
+.heatmap th {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0 0.2rem;
+}
+
+.heatmap thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+  text-align: center;
+}
+
+.heatmap tbody th {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+  text-align: left;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heatmap .hm-corner {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface);
+  text-align: left;
+}
+
+.hm-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.hm-present {
+  background: var(--present);
+}
+
+.hm-absent {
+  background: var(--absent);
+  opacity: 0.85;
+}
+
+.hm-none {
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--muted) 45%, transparent) 0 3px,
+    transparent 3px 6px
+  );
+  border-color: var(--border);
+}
+
+/* ---- Report tables ---- */
+
+.report-table-wrap {
+  overflow-x: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.report-table th,
+.report-table td {
+  border: var(--border-width) solid var(--border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.report-table th {
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent) 10%);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.report-table td {
+  color: var(--text);
+}
+
+.report-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.cell-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.cell-pct {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mini-bar {
+  width: 100%;
+  min-width: 70px;
+  height: 5px;
+  margin-top: 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+  overflow: hidden;
+}
+
+.mini-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.mini-fill--excellent {
+  background: var(--present);
+}
+
+.mini-fill--good {
+  background: var(--accent);
+}
+
+.mini-fill--warning {
+  background: var(--warn);
+}
+
+.mini-fill--risk {
+  background: var(--absent);
+}
+
+.mini-fill--nodata {
+  background: var(--muted);
+}
+
+.mini-fill--accent {
+  background: var(--accent);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  white-space: nowrap;
+}
+
+.badge--excellent {
+  color: var(--present);
+  border-color: color-mix(in srgb, var(--present) 55%, transparent);
+  background: color-mix(in srgb, var(--present) 14%, transparent);
+}
+
+.badge--good {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.badge--warning {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.badge--risk {
+  color: var(--absent);
+  border-color: color-mix(in srgb, var(--absent) 55%, transparent);
+  background: color-mix(in srgb, var(--absent) 14%, transparent);
+}
+
+.badge--nodata {
+  color: var(--muted);
 }
 
 .pagination {

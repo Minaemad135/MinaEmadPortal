@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Points | MinaEmad</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <link rel="stylesheet" href="points.css" />
+</head>
+<body>
+  <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+
+  <nav class="sidebar" id="siteNav">
+    <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="attendance.html">Attendance</a></li>
+      <li><a href="points.html" class="active">Points</a></li>
+      <li><a href="todo.html">Todo</a></li>
+      <li><a href="settings.html">Settings</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
+    </div>
+  </nav>
+
+  <main>
+    <section class="points-page">
+      <header class="points-hero">
+        <div class="points-hero-text">
+          <span class="points-eyebrow">Recognition board</span>
+          <h1>Points</h1>
+          <p class="subtitle">
+            Every student in the selected class appears here. Reward good work or make an adjustment
+            with one click — attendance dates do not affect the roster.
+          </p>
+        </div>
+        <div class="points-hero-mark" aria-hidden="true">
+          <span>+</span>
+          <small>pts</small>
+        </div>
+      </header>
+
+      <div class="points-tabs" role="tablist" aria-label="Points views">
+        <button
+          type="button"
+          class="points-tab active"
+          id="pointsTabRosterBtn"
+          data-points-tab="roster"
+          role="tab"
+          aria-selected="true"
+          aria-controls="pointsTabRoster"
+        >
+          Points
+        </button>
+        <button
+          type="button"
+          class="points-tab"
+          id="pointsTabAnalysisBtn"
+          data-points-tab="analysis"
+          role="tab"
+          aria-selected="false"
+          aria-controls="pointsTabAnalysis"
+        >
+          Analysis
+        </button>
+      </div>
+
+      <div id="pointsTabRoster" role="tabpanel" aria-labelledby="pointsTabRosterBtn">
+        <div class="points-toolbar">
+          <div class="points-toolbar-fields">
+            <label class="points-field">
+              <span>Class / group</span>
+              <select id="pointsGroup" aria-label="Choose class"></select>
+            </label>
+          </div>
+
+          <div class="points-toolbar-actions">
+            <span class="points-live"><span class="points-live-dot"></span>Live from attendance</span>
+            <button type="button" class="points-refresh" id="pointsRefresh">Refresh</button>
+          </div>
+        </div>
+
+        <div class="points-stats" id="pointsStats" aria-label="Points summary"></div>
+
+        <div class="points-board" id="pointsBoard">
+          <div class="points-board-head">
+            <div>
+              <h2>Class roster</h2>
+              <p id="pointsBoardMeta">All students in the class</p>
+            </div>
+            <span class="points-count" id="pointsCount">0 students</span>
+          </div>
+
+          <div class="points-list" id="pointsList"></div>
+        </div>
+
+        <div class="points-empty" id="pointsEmpty" hidden>
+          <div class="points-empty-mark" aria-hidden="true">0</div>
+          <h2>No students in this class yet</h2>
+          <p>Add students on the attendance page, then come back here to award points.</p>
+          <a href="attendance.html" class="points-empty-link">Open attendance &rarr;</a>
+        </div>
+      </div>
+
+      <div id="pointsTabAnalysis" role="tabpanel" aria-labelledby="pointsTabAnalysisBtn" hidden>
+        <div class="points-toolbar analysis-toolbar">
+          <div class="points-toolbar-fields">
+            <label class="points-field">
+              <span>Filter by group</span>
+              <select id="analysisGroup" aria-label="Filter analysis by group"></select>
+            </label>
+          </div>
+
+          <p class="analysis-scope" id="analysisScope">All classes · all students</p>
+        </div>
+
+        <div class="points-stats analysis-stats" id="analysisStats" aria-label="All students points analysis"></div>
+
+        <div class="analysis-grid">
+          <div class="analysis-card analysis-card--wide">
+            <h3>Class breakdown</h3>
+            <p class="analysis-sub">Points totals and averages for every class in the current selection.</p>
+            <div class="analysis-table-wrap">
+              <table class="analysis-table">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Students</th>
+                    <th>Total points</th>
+                    <th>Average</th>
+                    <th>Top student</th>
+                  </tr>
+                </thead>
+                <tbody id="analysisGroupBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="analysis-card">
+            <h3>Points distribution</h3>
+            <p class="analysis-sub">How students are spread across point bands.</p>
+            <div class="points-distribution" id="analysisDistribution"></div>
+          </div>
+
+          <div class="analysis-card">
+            <h3>Top performers</h3>
+            <p class="analysis-sub">The highest scores in the current selection.</p>
+            <ol class="top-performers" id="analysisTop"></ol>
+          </div>
+
+          <div class="analysis-card analysis-card--wide">
+            <h3>Student leaderboard</h3>
+            <p class="analysis-sub">Every student in the selection, ranked by points.</p>
+            <div class="analysis-table-wrap analysis-table-wrap--tall">
+              <table class="analysis-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Code</th>
+                    <th>Points</th>
+                  </tr>
+                </thead>
+                <tbody id="analysisLeaderBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="points-status" id="pointsStatus" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <footer>
+    <p><a href="index.html">&larr; Back to portfolio</a></p>
+  </footer>
+
+  <script src="sidebar.js"></script>
+  <script src="auth.js"></script>
+  <script src="points.js"></script>
+</body>
+</html>

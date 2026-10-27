@@ -17,6 +17,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
       <li><a href="attendance.html" class="active">Attendance</a></li>
+      <li><a href="points.html">Points</a></li>
       <li><a href="todo.html">Todo</a></li>
       <li><a href="settings.html">Settings</a></li>
     </ul>
@@ -30,6 +31,12 @@
       <h1>Attendance Plan</h1>
       <p class="subtitle">Pick one or more attendance days, add special days with titles, then take attendance.</p>
 
+      <div class="tab-nav" id="attTabNav">
+        <button type="button" class="tab-btn active" data-tab="plan">Plan & Attendance</button>
+        <button type="button" class="tab-btn" data-tab="reports" data-perm="viewAnalysis">Reports &amp; Statistics</button>
+      </div>
+
+      <div id="attTabPlan">
       <div class="panel toolbar" data-collapse>
         <div class="att-controls" data-collapse>
           <label class="control" data-perm="manageDays">
@@ -127,6 +134,154 @@
           <button type="button" id="nextPage" class="page-btn">Next &rarr;</button>
         </div>
       </div>
+      </div>
+
+      <div id="attTabReports" hidden>
+        <div class="panel report-panel">
+          <div class="report-head">
+            <div class="report-head-text">
+              <h2>Attendance Analysis</h2>
+              <p class="subtitle">Pick a date range — every chart and table below is calculated from it.</p>
+            </div>
+            <div class="range-bar" data-perm="useAnalysisRange">
+              <label class="control">
+                <span>From</span>
+                <input type="date" id="rangeFrom" aria-label="Range start" />
+              </label>
+              <label class="control">
+                <span>To</span>
+                <input type="date" id="rangeTo" aria-label="Range end" />
+              </label>
+              <div class="range-presets" id="rangePresets" role="group" aria-label="Quick ranges">
+                <button type="button" class="seg" data-preset="week">This week</button>
+                <button type="button" class="seg" data-preset="lastweek">Last week</button>
+                <button type="button" class="seg" data-preset="month">This month</button>
+                <button type="button" class="seg" data-preset="last30">Last 30 days</button>
+                <button type="button" class="seg" data-preset="year">This year</button>
+                <button type="button" class="seg" data-preset="all">All days</button>
+              </div>
+            </div>
+          </div>
+          <p class="range-summary" id="rangeSummary"></p>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <div class="reports-grid">
+          <div class="report-card report-card--wide">
+            <h3>Attendance Trend</h3>
+            <p class="card-sub">Share of students marked present on every day of the range.</p>
+            <div class="chart" id="chartTrend"></div>
+          </div>
+
+          <div class="report-card">
+            <h3>Present vs Absent by Day</h3>
+            <p class="card-sub">Unmarked students count as absent.</p>
+            <div class="chart" id="chartDaily"></div>
+            <div class="chart-legend" id="dailyLegend"></div>
+          </div>
+
+          <div class="report-card">
+            <h3>Attendance by Weekday</h3>
+            <p class="card-sub">Average rate for each weekday inside the range.</p>
+            <div class="chart" id="chartWeekday"></div>
+          </div>
+
+          <div class="report-card">
+            <h3>Student Ranking</h3>
+            <p class="card-sub">Attendance rate per student, best first.</p>
+            <div class="chart" id="chartStudents"></div>
+          </div>
+
+          <div class="report-card">
+            <h3>Monthly Trend</h3>
+            <p class="card-sub">Average rate month by month.</p>
+            <div class="chart" id="chartMonthly"></div>
+          </div>
+
+          <div class="report-card">
+            <h3>Performance Distribution</h3>
+            <p class="card-sub">How students spread across the attendance bands.</p>
+            <div class="chart" id="chartDonut"></div>
+            <div class="chart-legend" id="donutLegend"></div>
+          </div>
+        </div>
+
+        <div class="reports-grid reports-grid--single">
+          <div class="report-card" data-perm="viewAttendanceRisk">
+            <h3>Attention Needed</h3>
+            <p class="card-sub">Below 75% attendance or 2+ consecutive absences.</p>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Code</th>
+                    <th>% Present</th>
+                    <th>Streak</th>
+                    <th>Worst streak</th>
+                    <th>Last present</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="reportAttentionBody"></tbody>
+              </table>
+            </div>
+            <p class="report-empty" id="reportAttentionEmpty" hidden>Nobody is at risk in this range.</p>
+          </div>
+
+          <div class="report-card">
+            <h3>Student Breakdown</h3>
+            <p class="card-sub">Unmarked days count as absent.</p>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Code</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Unmarked</th>
+                    <th>Total</th>
+                    <th>% Present</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="reportStudentBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="report-card">
+            <h3>Daily Attendance</h3>
+            <p class="card-sub">Every attendance day inside the selected range.</p>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Unmarked</th>
+                    <th>Total</th>
+                    <th>% Present</th>
+                  </tr>
+                </thead>
+                <tbody id="reportDayBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="reports-grid">
+          <div class="report-card report-card--wide">
+            <h3>Attendance Heatmap</h3>
+            <p class="card-sub">One square per student per day.</p>
+            <div class="chart" id="chartHeatmap"></div>
+            <div class="chart-legend" id="heatmapLegend"></div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -148,6 +303,7 @@
 
   <script src="sidebar.js"></script>
   <script src="auth.js"></script>
+  <script src="charts.js"></script>
   <script src="attendance.js"></script>
 </body>
 </html>

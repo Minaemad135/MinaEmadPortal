@@ -17,6 +17,7 @@
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
       <li><a href="attendance.html">Attendance</a></li>
+      <li><a href="points.html">Points</a></li>
       <li><a href="todo.html">Todo</a></li>
       <li><a href="settings.html" class="active">Settings</a></li>
     </ul>
@@ -79,7 +80,15 @@
 
       <div class="settings-group" data-perm="changeAppearance">
         <h2>Theme</h2>
+        <p class="group-note">Choose a theme or let it follow your system.</p>
         <div class="option-grid" id="themeOptions">
+          <button type="button" class="option" data-theme="auto" aria-pressed="false">
+            <span class="swatch" data-theme-preview="auto">
+              <span class="swatch-bar"></span>
+              <span class="swatch-dot"></span>
+            </span>
+            <span class="option-label">Auto</span>
+          </button>
           <button type="button" class="option" data-theme="midnight" aria-pressed="false">
             <span class="swatch" data-theme-preview="midnight">
               <span class="swatch-bar"></span>
@@ -114,6 +123,20 @@
               <span class="swatch-dot"></span>
             </span>
             <span class="option-label">Forest</span>
+          </button>
+          <button type="button" class="option" data-theme="amoled" aria-pressed="false">
+            <span class="swatch" data-theme-preview="amoled">
+              <span class="swatch-bar"></span>
+              <span class="swatch-dot"></span>
+            </span>
+            <span class="option-label">AMOLED</span>
+          </button>
+          <button type="button" class="option" data-theme="nord" aria-pressed="false">
+            <span class="swatch" data-theme-preview="nord">
+              <span class="swatch-bar"></span>
+              <span class="swatch-dot"></span>
+            </span>
+            <span class="option-label">Nord</span>
           </button>
         </div>
       </div>

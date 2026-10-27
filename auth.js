@@ -11,13 +11,16 @@
     {
       page: "Attendance",
       perms: [
-        { key: "viewAttendance", label: "Open attendance page" },
-        { key: "markAttendance", label: "Mark present / absent" },
+        { key: "viewAttendance", label: "Open attendance & points pages" },
+        { key: "markAttendance", label: "Mark attendance & change points" },
         { key: "addStudent", label: "Add students" },
         { key: "editStudent", label: "Edit students" },
         { key: "deleteStudent", label: "Remove students" },
         { key: "manageDays", label: "Manage class, year & attendance days" },
         { key: "useFilters", label: "Filters, search & export CSV" },
+        { key: "viewAnalysis", label: "Open reports & statistics (analysis)" },
+        { key: "useAnalysisRange", label: "Change the analysis date range" },
+        { key: "viewAttendanceRisk", label: "View at-risk students & attendance streaks" },
       ],
     },
     {
@@ -50,6 +53,8 @@
       "viewAttendance",
       "markAttendance",
       "useFilters",
+      "viewAnalysis",
+      "useAnalysisRange",
       "viewTodo",
       "addTodo",
       "completeTodo",
@@ -60,13 +65,15 @@
   const PAGE_PERM = {
     home: "viewHome",
     attendance: "viewAttendance",
+    points: "viewAttendance",
     settings: "viewSettings",
     todo: "viewTodo",
   };
 
   function hashPassword(text) {
     let h = 5381;
-    for (let i = 0; i < text.length; i++) h = ((h << 5) + h) ^ text.charCodeAt(i);
+    for (let i = 0; i < text.length; i++)
+      h = ((h << 5) + h) ^ text.charCodeAt(i);
     return (h >>> 0).toString(16) + "-" + text.length.toString(16);
   }
 
@@ -76,20 +83,35 @@
 
   function permsFor(role, perms) {
     const out = {};
-    const preset = role === "admin" ? ALL_PERMS : role === "student" ? PRESETS.student : [];
+    const preset =
+      role === "admin" ? ALL_PERMS : role === "student" ? PRESETS.student : [];
     ALL_PERMS.forEach((key) => {
-      out[key] = perms && typeof perms[key] === "boolean" ? perms[key] : preset.includes(key);
+      out[key] =
+        perms && typeof perms[key] === "boolean"
+          ? perms[key]
+          : preset.includes(key);
     });
     if (role === "admin") ALL_PERMS.forEach((key) => (out[key] = true));
     return out;
   }
 
-  function normalizePerms(perms) {
+  function normalizePerms(perms, defaults) {
     const out = {};
     ALL_PERMS.forEach((key) => {
-      out[key] = perms && typeof perms[key] === "boolean" ? perms[key] : false;
+      out[key] =
+        perms && typeof perms[key] === "boolean"
+          ? perms[key]
+          : !!(defaults && typeof defaults[key] === "boolean" && defaults[key]);
     });
     return out;
+  }
+
+  function migratePerms(raw) {
+    const perms = raw && typeof raw === "object" ? raw : {};
+    const wasFullAdmin =
+      Object.keys(perms).length > 0 &&
+      Object.keys(perms).every((key) => perms[key] === true);
+    return normalizePerms(perms, wasFullAdmin ? permsFromKeys(ALL_PERMS) : null);
   }
 
   function permsFromKeys(keys) {
@@ -101,7 +123,6 @@
   function defaultRoles() {
     return [
       { id: "admin", name: "Admin", perms: permsFromKeys(PRESETS.admin) },
-      { id: "student", name: "Student", perms: permsFromKeys(PRESETS.student) },
     ];
   }
 
@@ -121,7 +142,7 @@
         ? raw.roles.map((r) => ({
             id: r.id || uid(),
             name: r.name || "Role",
-            perms: normalizePerms(r.perms),
+            perms: migratePerms(r.perms),
           }))
         : defaultRoles();
 
@@ -141,7 +162,7 @@
       const role = {
         id: uid(),
         name: `${base.name} (custom)`,
-        perms: normalizePerms(u.perms),
+        perms: migratePerms(u.perms),
       };
       roles.push(role);
       return { ...base, roleId: role.id };
@@ -165,7 +186,8 @@
     }
   }
 
-  const currentUser = () => store.users.find((u) => u.id === store.currentUserId) || null;
+  const currentUser = () =>
+    store.users.find((u) => u.id === store.currentUserId) || null;
   const roleById = (id) => store.roles.find((r) => r.id === id) || null;
   const roleOf = (user) => (user ? roleById(user.roleId) : null);
   const listRoles = () => store.roles;
@@ -204,6 +226,7 @@
   function pageKey() {
     const file = location.pathname.split("/").pop().toLowerCase();
     if (file === "attendance.html") return "attendance";
+    if (file === "points.html") return "points";
     if (file === "settings.html") return "settings";
     if (file === "todo.html") return "todo";
     return "home";
@@ -232,8 +255,16 @@
     card.id = "authForm";
 
     const mark = el("div", "auth-logo", "M");
-    const title = el("h2", null, isFirst ? "Create the first admin" : "Sign in");
-    const sub = el("p", "auth-sub", isFirst ? "This account gets every permission." : "MinaEmad");
+    const title = el(
+      "h2",
+      null,
+      isFirst ? "Create the first admin" : "Sign in",
+    );
+    const sub = el(
+      "p",
+      "auth-sub",
+      isFirst ? "This account gets every permission." : "MinaEmad",
+    );
 
     const nameField = el("label", "auth-field");
     nameField.appendChild(el("span", null, "Name"));
@@ -275,7 +306,11 @@
     error.id = "authError";
     card.appendChild(error);
 
-    const submit = el("button", "btn auth-submit", isFirst ? "Create admin" : "Sign in");
+    const submit = el(
+      "button",
+      "btn auth-submit",
+      isFirst ? "Create admin" : "Sign in",
+    );
     submit.type = "submit";
     card.appendChild(submit);
 
@@ -309,13 +344,19 @@
       const password = passInput.value;
 
       if (!name) return fail("Enter a name.");
-      if (password.length < 4) return fail("Password must be at least 4 characters.");
+      if (password.length < 4)
+        return fail("Password must be at least 4 characters.");
 
       if (isFirst) {
-        if (password !== confirmInput.value) return fail("Passwords do not match.");
+        if (password !== confirmInput.value)
+          return fail("Passwords do not match.");
         let adminRole = store.roles.find((r) => r.id === "admin");
         if (!adminRole) {
-          adminRole = { id: uid(), name: "Admin", perms: permsFromKeys(ALL_PERMS) };
+          adminRole = {
+            id: uid(),
+            name: "Admin",
+            perms: permsFromKeys(ALL_PERMS),
+          };
           store.roles.unshift(adminRole);
         }
         const user = {
@@ -331,9 +372,12 @@
         return;
       }
 
-      const user = store.users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+      const user = store.users.find(
+        (u) => u.name.toLowerCase() === name.toLowerCase(),
+      );
       if (!user) return fail(`No account named "${name}".`);
-      if (user.passwordHash !== hashPassword(password)) return fail("Wrong password.");
+      if (user.passwordHash !== hashPassword(password))
+        return fail("Wrong password.");
 
       store.currentUserId = user.id;
       save();
@@ -370,8 +414,8 @@
       el(
         "p",
         "auth-sub",
-        "Every account has been demoted, so nobody can manage users any more. Pick an account, enter its password, and it will be given full admin access."
-      )
+        "Every account has been demoted, so nobody can manage users any more. Pick an account, enter its password, and it will be given full admin access.",
+      ),
     );
 
     const userField = el("label", "auth-field");
@@ -443,8 +487,8 @@
       el(
         "p",
         "auth-sub",
-        `You are signed in as ${user.name}, and this account does not have permission to open this page.`
-      )
+        `You are signed in as ${user.name}, and this account does not have permission to open this page.`,
+      ),
     );
     const back = el("a", "btn auth-submit", "Go to home page");
     back.href = "index.html";
@@ -463,7 +507,10 @@
 
   function collapseEmpty() {
     const nodes = [...document.querySelectorAll("[data-collapse], .panel")];
-    nodes.sort((a, b) => a.getElementsByTagName("*").length - b.getElementsByTagName("*").length);
+    nodes.sort(
+      (a, b) =>
+        a.getElementsByTagName("*").length - b.getElementsByTagName("*").length,
+    );
     nodes.forEach((node) => {
       const kids = [...node.children];
       if (kids.length && kids.every((k) => k.hidden)) node.hidden = true;
@@ -478,11 +525,13 @@
       const href = (link.getAttribute("href") || "").toLowerCase();
       const key = href.includes("attendance")
         ? "attendance"
-        : href.includes("settings")
-          ? "settings"
-          : href.includes("todo")
-            ? "todo"
-            : "home";
+        : href.includes("points")
+          ? "points"
+          : href.includes("settings")
+            ? "settings"
+            : href.includes("todo")
+              ? "todo"
+              : "home";
       const li = link.closest("li");
       if (li) li.hidden = !can(PAGE_PERM[key]);
     });
@@ -498,7 +547,7 @@
     const role = roleOf(user);
     top.append(
       el("span", "user-chip-name", user.name),
-      el("span", "user-chip-role", role ? role.name : "no role")
+      el("span", "user-chip-role", role ? role.name : "no role"),
     );
     const logout = el("button", "user-logout", "Log out");
     logout.type = "button";
@@ -547,7 +596,9 @@
     refresh,
     gate: (selector, perm) => {
       const allow = can(perm);
-      document.querySelectorAll(selector).forEach((node) => (node.hidden = !allow));
+      document
+        .querySelectorAll(selector)
+        .forEach((node) => (node.hidden = !allow));
       return allow;
     },
     isLocked: locked,
