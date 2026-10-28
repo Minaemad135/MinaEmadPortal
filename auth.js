@@ -20,7 +20,10 @@
         { key: "useFilters", label: "Filters, search & export CSV" },
         { key: "viewAnalysis", label: "Open reports & statistics (analysis)" },
         { key: "useAnalysisRange", label: "Change the analysis date range" },
-        { key: "viewAttendanceRisk", label: "View at-risk students & attendance streaks" },
+        {
+          key: "viewAttendanceRisk",
+          label: "View at-risk students & attendance streaks",
+        },
       ],
     },
     {
@@ -111,7 +114,10 @@
     const wasFullAdmin =
       Object.keys(perms).length > 0 &&
       Object.keys(perms).every((key) => perms[key] === true);
-    return normalizePerms(perms, wasFullAdmin ? permsFromKeys(ALL_PERMS) : null);
+    return normalizePerms(
+      perms,
+      wasFullAdmin ? permsFromKeys(ALL_PERMS) : null,
+    );
   }
 
   function permsFromKeys(keys) {
@@ -263,7 +269,7 @@
     const sub = el(
       "p",
       "auth-sub",
-      isFirst ? "This account gets every permission." : "MinaEmad",
+      isFirst ? "This account gets every permission." : "",
     );
 
     const nameField = el("label", "auth-field");
