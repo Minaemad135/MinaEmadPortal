@@ -38,7 +38,9 @@
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: border-color var(--transition), transform var(--transition);
+  transition:
+    border-color var(--transition),
+    transform var(--transition);
 }
 
 .option:hover {
@@ -115,6 +117,18 @@
   --p-accent: #4ade80;
   --p-border: #1c5137;
 }
+.swatch[data-theme-preview="amoled"] {
+  --p-bg: #000000;
+  --p-surface: #0a0a0a;
+  --p-accent: #ffffff;
+  --p-border: #1a1a1a;
+}
+.swatch[data-theme-preview="nord"] {
+  --p-bg: #2e3440;
+  --p-surface: #3b4252;
+  --p-accent: #88c0d0;
+  --p-border: #4c566a;
+}
 
 /* Design preview shapes */
 .shape {
@@ -146,13 +160,35 @@
 .shape[data-design-preview="glass"] {
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface) 55%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-}
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
 
-/* Classes / groups management */
-.group-note {
+  .modal-field select {
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 2rem 0.6rem 0.75rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23888888' d='M1 1l4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+  }
+
+  .modal-field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  /* Classes / groups management */
+  .group-note {
   color: var(--muted);
   font-size: 0.88rem;
   margin: -0.4rem 0 0.9rem;
@@ -230,7 +266,9 @@
   font-weight: 600;
   padding: 0.32rem 0.7rem;
   cursor: pointer;
-  transition: border-color var(--transition), color var(--transition);
+  transition:
+    border-color var(--transition),
+    color var(--transition);
 }
 
 .mini-btn:hover:not(:disabled) {
@@ -281,7 +319,9 @@
   color: var(--text);
   font-family: inherit;
   font-size: 0.92rem;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .group-add input:focus {
@@ -294,8 +334,6 @@
   padding: 0.55rem 1.1rem;
   font-size: 0.9rem;
 }
-
-
 
 /* ---------- Users & permissions ---------- */
 .user-list {
@@ -322,6 +360,10 @@
   flex-wrap: wrap;
 }
 
+/* .user-add-actions {
+    margin-top: 0.9rem;
+  } */
+
 .user-add-row input {
   flex: 1;
   min-width: 150px;
@@ -332,7 +374,9 @@
   color: var(--text);
   font-family: inherit;
   font-size: 0.92rem;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .user-add-row select,
@@ -353,7 +397,9 @@
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%23888888' d='M1 1l4 4 4-4'/></svg>");
   background-repeat: no-repeat;
   background-position: right 0.7rem center;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .user-add-row select:hover,
