@@ -1,0 +1,155 @@
+.logs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.logs-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.logs-header h1 {
+  margin: 0;
+}
+
+.logs-header .subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+}
+
+.logs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.logs-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+
+.logs-icon {
+  position: absolute;
+  left: 0.8rem;
+  color: var(--text-muted);
+}
+
+.logs-search input {
+  width: 100%;
+  padding: 0.6rem 0.9rem 0.6rem 2.2rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.logs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.logs-filters select {
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.logs-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.logs-table thead {
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent) 10%);
+}
+
+.logs-table th,
+.logs-table td {
+  text-align: left;
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.logs-table th {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.logs-table tbody tr:hover {
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent) 8%);
+}
+
+.logs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.logs-time {
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.logs-user {
+  font-weight: 600;
+}
+
+.logs-action {
+  font-weight: 600;
+}
+
+.logs-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--text);
+}
+
+.logs-detail-line {
+  word-break: break-word;
+}
+
+.logs-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 920px) {
+  .logs-table {
+    min-width: 640px;
+  }
+}

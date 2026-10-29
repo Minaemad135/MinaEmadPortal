@@ -45,6 +45,13 @@
         { key: "deleteTodo", label: "Delete todos & clear completed" },
       ],
     },
+    {
+      page: "Logs",
+      perms: [
+        { key: "viewLogs", label: "Open logs page" },
+        { key: "manageLogs", label: "Clear logs" },
+      ],
+    },
   ];
 
   const ALL_PERMS = PERM_GROUPS.flatMap((g) => g.perms.map((p) => p.key));
@@ -71,6 +78,7 @@
     points: "viewAttendance",
     settings: "viewSettings",
     todo: "viewTodo",
+    logs: "viewLogs",
   };
 
   function hashPassword(text) {
@@ -157,9 +165,9 @@
         id: u.id || uid(),
         name: u.name || "User",
         passwordHash: u.passwordHash || "",
-        ...(u.firstName ? { firstName: u.firstName } : {}),
-        ...(u.lastName ? { lastName: u.lastName } : {}),
-        ...(u.phone ? { phone: u.phone } : {}),
+        firstName: u.firstName || "",
+        lastName: u.lastName || "",
+        phone: u.phone || "",
       };
 
       if (u.roleId) return { ...base, roleId: u.roleId };
@@ -186,6 +194,44 @@
   }
 
   let store = read();
+
+  const LOGS_KEY = "mina.logs";
+
+  function getLogs() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LOGS_KEY));
+      return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveLogs(logs) {
+    try {
+      localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function logAction(action, details = {}) {
+    try {
+      const user = currentUser();
+      const logs = getLogs();
+      logs.unshift({
+        id: uid(),
+        at: new Date().toISOString(),
+        userId: user ? user.id : null,
+        userName: user ? user.name : "Unknown",
+        action,
+        details,
+      });
+      if (logs.length > 1000) logs.length = 1000;
+      saveLogs(logs);
+    } catch (e) {
+      /* ignore */
+    }
+  }
 
   function save() {
     try {
@@ -227,6 +273,10 @@
     save();
   }
 
+  function clearLogs() {
+    saveLogs([]);
+  }
+
   function refresh() {
     store = read();
     return store;
@@ -238,6 +288,7 @@
     if (file === "points.html") return "points";
     if (file === "settings.html") return "settings";
     if (file === "todo.html") return "todo";
+    if (file === "logs.html") return "logs";
     return "home";
   }
 
@@ -386,9 +437,14 @@
           roleId: adminRole.id,
         };
         store.users.push(user);
-        store.currentUserId = user.id;
-        save();
-        location.reload();
+      store.currentUserId = user.id;
+      save();
+      if (window.MinaAuth && window.MinaAuth.logAction) {
+        try {
+          window.MinaAuth.logAction("User logged in", { user: user.name });
+        } catch (e) {}
+      }
+      location.reload();
         return;
       }
 
@@ -401,6 +457,11 @@
 
       store.currentUserId = user.id;
       save();
+      if (window.MinaAuth && window.MinaAuth.logAction) {
+        try {
+          window.MinaAuth.logAction("User logged in", { user: user.name });
+        } catch (e) {}
+      }
       location.reload();
     });
 
@@ -551,9 +612,11 @@
             ? "settings"
             : href.includes("todo")
               ? "todo"
-              : "home";
+              : href.includes("logs")
+                ? "logs"
+                : "home";
       const li = link.closest("li");
-      if (li) li.hidden = !can(PAGE_PERM[key]);
+      if (li && PAGE_PERM[key]) li.hidden = !can(PAGE_PERM[key]);
     });
 
     const themeToggle = document.getElementById("themeToggle");
@@ -572,6 +635,11 @@
     const logout = el("button", "user-logout", "Log out");
     logout.type = "button";
     logout.addEventListener("click", () => {
+      if (window.MinaAuth && window.MinaAuth.logAction) {
+        try {
+          window.MinaAuth.logAction("User logged out", { user: user.name });
+        } catch (e) {}
+      }
       store.currentUserId = null;
       save();
       location.reload();
@@ -665,6 +733,10 @@
     getState,
     saveState,
     refresh,
+    getLogs,
+    saveLogs,
+    logAction,
+    clearLogs,
     gate: (selector, perm) => {
       const allow = can(perm);
       document

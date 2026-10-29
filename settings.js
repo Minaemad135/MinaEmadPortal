@@ -689,12 +689,18 @@ newRoleNameEl.addEventListener("keydown", (e) => {
     if (passInput.value) user.passwordHash = A.hashPassword(passInput.value);
     user.roleId = roleSel.value;
     persist();
+    if (A.logAction) A.logAction("User updated", { user: user.name, firstName: user.firstName, lastName: user.lastName, roleId: user.roleId, phone: user.phone });
     closeEditor();
     renderUsers();
     renderRoles();
     const display = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.name;
     flash(`Saved "${display}".`);
-    if (wasMe) location.reload();
+    if (wasMe) {
+      if (A.logAction) A.logAction("Profile updated", { user: user.name });
+      location.reload();
+    } else if (A.logAction) {
+      A.logAction("User profile edited", { user: user.name });
+    }
     });
 
     cancelBtn.addEventListener("click", closeEditor);
@@ -733,7 +739,9 @@ function deleteUser(user) {
   store().users = store().users.filter((x) => x.id !== user.id);
   if (wasMe) store().currentUserId = null;
   persist();
+  if (A.logAction) A.logAction("User deleted", { user: user.name, id: user.id });
   closeEditor();
+  if (A.logAction) A.logAction("User deleted", { user: user.name });
   renderUsers();
   renderRoles();
   flash(`"${user.name}" deleted.`);
@@ -902,22 +910,25 @@ function deleteUser(user) {
         return fail("Pick a role for the new user.");
       }
 
-      store().users.push({
-        id: A.uid(),
-        firstName,
-        lastName,
-        name,
-        phone,
-        passwordHash: A.hashPassword(password),
-        roleId,
-      });
-      persist();
+    const newUser = {
+      id: A.uid(),
+      firstName,
+      lastName,
+      name,
+      phone,
+      passwordHash: A.hashPassword(password),
+      roleId,
+    };
+    store().users.push(newUser);
+    persist();
+    if (A.logAction) A.logAction("User created", { user: newUser.name, roleId: newUser.roleId, firstName: newUser.firstName, lastName: newUser.lastName });
 
-      renderUsers();
-      renderRoles();
-      const display = [firstName, lastName].filter(Boolean).join(" ") || name;
-      flash(`"${display}" can now sign in.`);
-      close();
+    renderUsers();
+    renderRoles();
+  if (A.logAction) A.logAction("User created", { user: name, roleId: roleSel.value, firstName, lastName });
+  const display = [firstName, lastName].filter(Boolean).join(" ") || name;
+  flash(`"${display}" can now sign in.`);
+  close();
     });
 
     setTimeout(() => firstNameInput.focus(), 50);

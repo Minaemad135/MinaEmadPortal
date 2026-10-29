@@ -75,23 +75,30 @@ function render() {
 
 function addTodo(text) {
   if (!Auth.can("addTodo")) return;
-  todos.unshift({ id: Date.now().toString(), text: text.trim(), done: false });
+  const todo = { id: Date.now().toString(), text: text.trim(), done: false };
+  todos.unshift(todo);
   saveTodos();
+  if (Auth.logAction) Auth.logAction("Todo added", { text: todo.text });
   render();
 }
 
 function toggleTodo(id) {
   if (!Auth.can("completeTodo")) return;
   const todo = todos.find((t) => t.id === id);
-  if (todo) todo.done = !todo.done;
-  saveTodos();
+  if (todo) {
+    todo.done = !todo.done;
+    saveTodos();
+    if (Auth.logAction) Auth.logAction(todo.done ? "Todo completed" : "Todo uncompleted", { text: todo.text });
+  }
   render();
 }
 
 function deleteTodo(id) {
   if (!Auth.can("deleteTodo")) return;
+  const todo = todos.find((t) => t.id === id);
   todos = todos.filter((t) => t.id !== id);
   saveTodos();
+  if (Auth.logAction && todo) Auth.logAction("Todo deleted", { text: todo.text });
   render();
 }
 
@@ -114,8 +121,10 @@ filtersEl.addEventListener("click", (e) => {
 
 clearCompletedBtn.addEventListener("click", () => {
   if (!Auth.can("deleteTodo")) return;
+  const count = todos.filter((t) => t.done).length;
   todos = todos.filter((t) => !t.done);
   saveTodos();
+  if (Auth.logAction && count) Auth.logAction("Completed todos cleared", { count });
   render();
 });
 

@@ -733,6 +733,11 @@
     updateRow(row, next, student);
     renderStats(group.students);
     renderAnalysis();
+    const A = window.MinaAuth;
+    if (A && A.logAction) {
+      const delta = next - current;
+      A.logAction(delta > 0 ? "Points added" : "Points removed", { student: student.name, group: group.name, delta: Math.abs(delta), total: next });
+    }
     showStatus(`${student.name} now has ${next} point${next === 1 ? "" : "s"}.`);
   });
 

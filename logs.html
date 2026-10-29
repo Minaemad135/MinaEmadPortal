@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logs | MinaEmad</title>
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <link rel="stylesheet" href="logs.css" />
+</head>
+<body>
+  <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+
+  <nav class="sidebar" id="siteNav">
+    <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="attendance.html">Attendance</a></li>
+      <li><a href="points.html">Points</a></li>
+      <li><a href="todo.html">Todo</a></li>
+      <li><a href="logs.html" class="active">Logs</a></li>
+      <li><a href="settings.html">Settings</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
+    </div>
+  </nav>
+
+  <main>
+    <section class="logs-page">
+      <header class="logs-header">
+        <div>
+          <h1>Activity Logs</h1>
+          <p class="subtitle">Track actions performed across the portal with user and details.</p>
+        </div>
+        <div class="logs-actions">
+          <button type="button" id="exportLogs" class="btn">Export CSV</button>
+          <button type="button" id="clearLogs" class="btn" data-perm="manageLogs">Clear logs</button>
+        </div>
+      </header>
+
+      <div class="logs-toolbar">
+        <div class="logs-search">
+          <svg class="logs-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"></circle>
+            <line x1="16.65" y1="16.65" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line>
+          </svg>
+          <input type="search" id="logsSearch" placeholder="Search by user, action, or details..." autocomplete="off" />
+        </div>
+        <div class="logs-filters">
+          <select id="logsUserFilter">
+            <option value="all">All users</option>
+          </select>
+          <select id="logsActionFilter">
+            <option value="all">All actions</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="logs-table-wrap">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="logsBody"></tbody>
+        </table>
+        <p id="logsEmpty" class="logs-empty" hidden>No logs found.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="auth.js"></script>
+  <script src="sidebar.js"></script>
+  <script src="logs.js"></script>
+</body>
+</html>

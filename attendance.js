@@ -317,6 +317,13 @@ function cycle(studentId, iso) {
   else g.records[studentId][iso] = next;
 
   save();
+  const A = window.MinaAuth;
+  const s = g.students.find((x) => x.id === studentId);
+  if (A && A.logAction && s) {
+    if (next === undefined) A.logAction("Attendance cleared", { student: s.name, group: g.name, date: iso });
+    else if (next === "present") A.logAction("Attendance marked present", { student: s.name, group: g.name, date: iso });
+    else if (next === "absent") A.logAction("Attendance marked absent", { student: s.name, group: g.name, date: iso });
+  }
   render();
 }
 
@@ -345,6 +352,8 @@ function removeStudent(id) {
   g.students = g.students.filter((x) => x.id !== id);
   delete g.records[id];
   save();
+  const A = window.MinaAuth;
+  if (A && A.logAction && s) A.logAction("Student removed", { student: s.name, group: g.name });
   render();
 }
 
@@ -1400,8 +1409,10 @@ yearInput.addEventListener("change", () => {
   if (year >= 2000 && year <= 2100) {
     g.year = year;
     resetRange(g);
-    save();
-    render();
+  save();
+  const A = window.MinaAuth;
+  if (A && A.logAction) A.logAction("Student added", { student: name, group: g.name });
+  render();
   } else {
     yearInput.value = g.year;
   }
