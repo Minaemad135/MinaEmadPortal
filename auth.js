@@ -157,6 +157,9 @@
         id: u.id || uid(),
         name: u.name || "User",
         passwordHash: u.passwordHash || "",
+        ...(u.firstName ? { firstName: u.firstName } : {}),
+        ...(u.lastName ? { lastName: u.lastName } : {}),
+        ...(u.phone ? { phone: u.phone } : {}),
       };
 
       if (u.roleId) return { ...base, roleId: u.roleId };
@@ -273,12 +276,12 @@
     );
 
     const nameField = el("label", "auth-field");
-    nameField.appendChild(el("span", null, "Name"));
+    nameField.appendChild(el("span", null, "Username"));
     const nameInput = el("input");
     nameInput.type = "text";
     nameInput.id = "authName";
     nameInput.autocomplete = "username";
-    nameInput.placeholder = "e.g. Mina";
+    nameInput.placeholder = "e.g. mina_emad";
     nameInput.required = true;
     nameField.appendChild(nameInput);
 
@@ -344,12 +347,23 @@
       passInput.focus();
     };
 
+    function validateUsernameAuth(name) {
+      if (!name) return "Enter a username.";
+      if (/\s/.test(name)) return "Username cannot contain spaces.";
+      if (!/^[A-Za-z0-9._-]+$/.test(name)) return "Username can only use letters, numbers, ., _, -";
+      if (name.length < 3) return "Username must be at least 3 characters.";
+      if (name.length > 11) return "Username must be exactly 11 characters.";
+      return null;
+    }
+
     card.addEventListener("submit", (e) => {
       e.preventDefault();
-      const name = nameInput.value.trim();
+      const rawName = nameInput.value.trim();
       const password = passInput.value;
 
-      if (!name) return fail("Enter a name.");
+      const nameErr = validateUsernameAuth(rawName);
+      if (nameErr) return fail(nameErr);
+      const name = rawName;
       if (password.length < 4)
         return fail("Password must be at least 4 characters.");
 
@@ -566,6 +580,56 @@
     siteNav.appendChild(chip);
   }
 
+  function formatLogoName(name) {
+    if (!name || typeof name !== "string") return "MinaEmad";
+    const trimmed = name.trim();
+    if (!trimmed) return "MinaEmad";
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "MinaEmad";
+
+    let base = parts[0].replace(/[^A-Za-z]/g, "");
+    if (!base) return "MinaEmad";
+
+    base = base.charAt(0).toUpperCase() + base.slice(1).toLowerCase();
+
+    if (base.length > 11) {
+      base = base.slice(0, 11);
+    }
+
+    return base;
+  }
+
+  function updateLogos() {
+    const user = currentUser();
+    if (!user) {
+      document.querySelectorAll(".logo").forEach((logo) => {
+        const markEl = logo.querySelector(".logo-mark");
+        const textEl = logo.querySelector(".logo-text");
+        if (markEl) markEl.textContent = "M";
+        if (textEl) textEl.textContent = "MinaEmad";
+      });
+      return;
+    }
+    const display = formatLogoName(user.name);
+    if (display.length === 0) {
+      document.querySelectorAll(".logo").forEach((logo) => {
+        const markEl = logo.querySelector(".logo-mark");
+        const textEl = logo.querySelector(".logo-text");
+        if (markEl) markEl.textContent = "M";
+        if (textEl) textEl.textContent = "MinaEmad";
+      });
+      return;
+    }
+    const mark = display.charAt(0).toUpperCase();
+    const text = display;
+    document.querySelectorAll(".logo").forEach((logo) => {
+      const markEl = logo.querySelector(".logo-mark");
+      const textEl = logo.querySelector(".logo-text");
+      if (markEl) markEl.textContent = mark;
+      if (textEl) textEl.textContent = text;
+    });
+  }
+
   const user = currentUser();
   const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
 
@@ -578,6 +642,7 @@
     gateDataPerms();
     if (!can(PAGE_PERM[pageKey()])) buildDenied(user);
   }
+  updateLogos();
 
   window.MinaAuth = {
     PERM_GROUPS,

@@ -1,182 +1,275 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings | MinaEmad</title>
-  <script src="theme.js"></script>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="auth.css" />
-  <link rel="stylesheet" href="settings.css" />
-</head>
-<body>
-  <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">&#9776;</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings | MinaEmad</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+    <link rel="stylesheet" href="attendance.css" />
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+      &#9776;
+    </button>
 
-  <nav class="sidebar" id="siteNav">
-    <a href="index.html" class="logo"><span class="logo-mark">M</span><span class="logo-text">MinaEmad</span></a>
-    <ul class="nav-links" id="navLinks">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="attendance.html">Attendance</a></li>
-      <li><a href="points.html">Points</a></li>
-      <li><a href="todo.html">Todo</a></li>
-      <li><a href="settings.html" class="active">Settings</a></li>
-    </ul>
-    <div class="nav-actions">
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode"></button>
-    </div>
-  </nav>
+    <nav class="sidebar" id="siteNav">
+      <a href="index.html" class="logo"
+        ><span class="logo-mark">M</span
+        ><span class="logo-text">MinaEmad</span></a
+      >
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="attendance.html">Attendance</a></li>
+        <li><a href="points.html">Points</a></li>
+        <li><a href="todo.html">Todo</a></li>
+        <li><a href="settings.html" class="active">Settings</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button
+          class="theme-toggle"
+          id="themeToggle"
+          aria-label="Toggle dark mode"
+        ></button>
+      </div>
+    </nav>
 
-  <main>
-    <section class="settings">
-      <h1>Settings</h1>
-      <p class="subtitle">Customize how MinaEmad looks. Changes apply instantly and are saved in this browser.</p>
+    <main>
+      <section class="settings">
+        <h1>Settings</h1>
+        <!-- <p class="subtitle">
+          Customize how MinaEmad looks. Changes apply instantly and are saved in
+          this browser.
+        </p> -->
 
-      <div class="settings-group" data-perm="manageRoles">
-        <h2>Roles</h2>
-        <p class="group-note">
-          Create named roles and choose exactly which pages and actions they allow. Assign a role to
-          a user in the Users section below.
-        </p>
-        <ul class="group-list role-list" id="roleList"></ul>
+        <div class="settings-group" data-perm="manageRoles">
+          <h2>Roles</h2>
+          <p class="group-note">
+            Create named roles and choose exactly which pages and actions they
+            allow. Assign a role to a user in the Users section below.
+          </p>
+          <ul class="group-list role-list" id="roleList"></ul>
 
-        <div class="user-add">
-          <div class="user-add-row">
-            <input type="text" id="newRoleName" placeholder="New role name" autocomplete="off" />
-            <button type="button" class="btn" id="addRoleBtn">Add role</button>
+          <div class="user-add">
+            <div class="user-add-row">
+              <input
+                type="text"
+                id="newRoleName"
+                placeholder="New role name"
+                autocomplete="off"
+              />
+              <button type="button" class="btn" id="addRoleBtn">
+                Add role
+              </button>
+            </div>
+            <details class="perm-details" id="newRolePermDetails">
+              <summary>Permissions</summary>
+              <div class="perm-groups" id="newRolePerms"></div>
+            </details>
           </div>
-          <details class="perm-details" id="newRolePermDetails">
-            <summary>Permissions</summary>
-            <div class="perm-groups" id="newRolePerms"></div>
-          </details>
         </div>
-      </div>
 
-      <div class="settings-group" data-perm="manageUsers">
-        <h2>Users</h2>
-        <p class="group-note">
-          Add people by name and password, then assign one of the roles you created above.
-        </p>
-        <ul class="user-list" id="userList"></ul>
+        <div class="settings-group" data-perm="manageUsers">
+          <h2>Users</h2>
+          <p class="group-note">
+            Add people with their details, then assign one of the roles you
+            created above.
+          </p>
+          <ul class="user-list" id="userList"></ul>
 
-        <div class="user-add">
-          <div class="user-add-row">
-            <input type="text" id="newUserName" placeholder="Name" autocomplete="off" />
-            <input type="password" id="newUserPassword" placeholder="Password" autocomplete="new-password" />
-            <select id="newUserRole"></select>
-            <button type="button" class="btn" id="addUserBtn">Add user</button>
+          <div class="group-add">
+            <button type="button" class="btn" id="openAddUserBtn">
+              Add user
+            </button>
           </div>
         </div>
-      </div>
 
-      <div class="settings-group" data-perm="manageClasses">
-        <h2>Classes / groups</h2>
-        <p class="group-note">Add, rename or remove the classes used on the Attendance page. Changes save instantly.</p>
-        <ul class="group-list" id="groupList"></ul>
-        <div class="group-add">
-          <input type="text" id="newGroupName" placeholder="New class name" autocomplete="off" />
-          <button type="button" class="btn" id="addGroupBtn">Add class</button>
+        <div class="settings-group" data-perm="manageClasses">
+          <h2>Classes / groups</h2>
+          <p class="group-note">
+            Add, rename or remove the classes used on the Attendance page.
+            Changes save instantly.
+          </p>
+          <ul class="group-list" id="groupList"></ul>
+          <div class="group-add">
+            <input
+              type="text"
+              id="newGroupName"
+              placeholder="New class name"
+              autocomplete="off"
+            />
+            <button type="button" class="btn" id="addGroupBtn">
+              Add class
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="settings-group" data-perm="changeAppearance">
-        <h2>Theme</h2>
-        <p class="group-note">Choose a theme or let it follow your system.</p>
-        <div class="option-grid" id="themeOptions">
-          <button type="button" class="option" data-theme="auto" aria-pressed="false">
-            <span class="swatch" data-theme-preview="auto">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Auto</span>
-          </button>
-          <button type="button" class="option" data-theme="midnight" aria-pressed="false">
-            <span class="swatch" data-theme-preview="midnight">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Midnight</span>
-          </button>
-          <button type="button" class="option" data-theme="daylight" aria-pressed="false">
-            <span class="swatch" data-theme-preview="daylight">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Daylight</span>
-          </button>
-          <button type="button" class="option" data-theme="ocean" aria-pressed="false">
-            <span class="swatch" data-theme-preview="ocean">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Ocean</span>
-          </button>
-          <button type="button" class="option" data-theme="sunset" aria-pressed="false">
-            <span class="swatch" data-theme-preview="sunset">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Sunset</span>
-          </button>
-          <button type="button" class="option" data-theme="forest" aria-pressed="false">
-            <span class="swatch" data-theme-preview="forest">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Forest</span>
-          </button>
-          <button type="button" class="option" data-theme="amoled" aria-pressed="false">
-            <span class="swatch" data-theme-preview="amoled">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">AMOLED</span>
-          </button>
-          <button type="button" class="option" data-theme="nord" aria-pressed="false">
-            <span class="swatch" data-theme-preview="nord">
-              <span class="swatch-bar"></span>
-              <span class="swatch-dot"></span>
-            </span>
-            <span class="option-label">Nord</span>
-          </button>
+        <div class="settings-group" data-perm="changeAppearance">
+          <h2>Theme</h2>
+          <p class="group-note">Choose a theme or let it follow your system.</p>
+          <div class="option-grid" id="themeOptions">
+            <button
+              type="button"
+              class="option"
+              data-theme="auto"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="auto">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Auto</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="midnight"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="midnight">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Midnight</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="daylight"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="daylight">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Daylight</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="ocean"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="ocean">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Ocean</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="sunset"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="sunset">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Sunset</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="forest"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="forest">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Forest</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="amoled"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="amoled">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">AMOLED</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-theme="nord"
+              aria-pressed="false"
+            >
+              <span class="swatch" data-theme-preview="nord">
+                <span class="swatch-bar"></span>
+                <span class="swatch-dot"></span>
+              </span>
+              <span class="option-label">Nord</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="settings-group" data-perm="changeAppearance">
-        <h2>Design</h2>
-        <div class="option-grid" id="designOptions">
-          <button type="button" class="option" data-design="classic" aria-pressed="false">
-            <span class="shape" data-design-preview="classic"></span>
-            <span class="option-label">Classic</span>
-          </button>
-          <button type="button" class="option" data-design="minimal" aria-pressed="false">
-            <span class="shape" data-design-preview="minimal"></span>
-            <span class="option-label">Minimal</span>
-          </button>
-          <button type="button" class="option" data-design="rounded" aria-pressed="false">
-            <span class="shape" data-design-preview="rounded"></span>
-            <span class="option-label">Rounded</span>
-          </button>
-          <button type="button" class="option" data-design="sharp" aria-pressed="false">
-            <span class="shape" data-design-preview="sharp"></span>
-            <span class="option-label">Sharp</span>
-          </button>
-          <button type="button" class="option" data-design="glass" aria-pressed="false">
-            <span class="shape" data-design-preview="glass"></span>
-            <span class="option-label">Glass</span>
-          </button>
+        <div class="settings-group" data-perm="changeAppearance">
+          <h2>Design</h2>
+          <div class="option-grid" id="designOptions">
+            <button
+              type="button"
+              class="option"
+              data-design="classic"
+              aria-pressed="false"
+            >
+              <span class="shape" data-design-preview="classic"></span>
+              <span class="option-label">Classic</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-design="minimal"
+              aria-pressed="false"
+            >
+              <span class="shape" data-design-preview="minimal"></span>
+              <span class="option-label">Minimal</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-design="rounded"
+              aria-pressed="false"
+            >
+              <span class="shape" data-design-preview="rounded"></span>
+              <span class="option-label">Rounded</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-design="sharp"
+              aria-pressed="false"
+            >
+              <span class="shape" data-design-preview="sharp"></span>
+              <span class="option-label">Sharp</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              data-design="glass"
+              aria-pressed="false"
+            >
+              <span class="shape" data-design-preview="glass"></span>
+              <span class="option-label">Glass</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <p id="settingsStatus" class="status" role="status"></p>
-    </section>
-  </main>
+        <p id="settingsStatus" class="status" role="status"></p>
+      </section>
+    </main>
 
-  <footer>
-    <p><a href="index.html">&larr; Back to portfolio</a></p>
-  </footer>
+    <footer>
+      <p><a href="index.html">&larr; Back to portfolio</a></p>
+    </footer>
 
-  <script src="sidebar.js"></script>
-  <script src="auth.js"></script>
-  <script src="settings.js"></script>
-</body>
+    <script src="sidebar.js"></script>
+    <script src="auth.js"></script>
+    <script src="settings.js"></script>
+  </body>
 </html>

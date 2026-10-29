@@ -229,20 +229,17 @@ renderGroups();
 
 /* ---------- Roles & users ---------- */
 
-const A = window.MinaAuth;
-const store = () => A.getState();
+  const A = window.MinaAuth;
+  const store = () => A.getState();
 
-const roleListEl = document.getElementById("roleList");
-const newRoleNameEl = document.getElementById("newRoleName");
-const addRoleBtnEl = document.getElementById("addRoleBtn");
-const newRolePermsEl = document.getElementById("newRolePerms");
-const newRolePermDetailsEl = document.getElementById("newRolePermDetails");
+  const roleListEl = document.getElementById("roleList");
+  const newRoleNameEl = document.getElementById("newRoleName");
+  const addRoleBtnEl = document.getElementById("addRoleBtn");
+  const newRolePermsEl = document.getElementById("newRolePerms");
+  const newRolePermDetailsEl = document.getElementById("newRolePermDetails");
 
-const userListEl = document.getElementById("userList");
-const newUserNameEl = document.getElementById("newUserName");
-const newUserPasswordEl = document.getElementById("newUserPassword");
-const newUserRoleEl = document.getElementById("newUserRole");
-const addUserBtnEl = document.getElementById("addUserBtn");
+  const userListEl = document.getElementById("userList");
+  const openAddUserBtnEl = document.getElementById("openAddUserBtn");
 
 function persist() {
   A.saveState();
@@ -516,37 +513,41 @@ newRoleNameEl.addEventListener("keydown", (e) => {
   }
 });
 
-/* ----- Users ----- */
+  /* ----- Users ----- */
 
-function fillRoleSelect() {
-  newUserRoleEl.innerHTML = "";
-  store().roles.forEach((r) => {
-    const opt = document.createElement("option");
-    opt.value = r.id;
-    opt.textContent = r.name;
-    newUserRoleEl.appendChild(opt);
-  });
-}
-
-function renderUsers() {
-  userListEl.innerHTML = "";
-
-  if (!store().users.length) {
-    const empty = document.createElement("li");
-    empty.className = "group-empty";
-    empty.textContent = "No users yet. Add one below — it will be able to sign in right away.";
-    userListEl.appendChild(empty);
-    return;
+  function fillRoleSelect() {
+    const sel = document.getElementById("newUserRole");
+    if (!sel) return;
+    sel.innerHTML = "";
+    store().roles.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      sel.appendChild(opt);
+    });
   }
 
-  store().users.forEach((u) => {
-    const li = document.createElement("li");
-    li.className = "group-item user-item";
+  function renderUsers() {
+    if (!userListEl) return;
+    userListEl.innerHTML = "";
 
-    const name = document.createElement("span");
-    name.className = "group-name";
-    name.textContent = u.name;
-    name.title = u.name;
+    if (!store().users.length) {
+      const empty = document.createElement("li");
+      empty.className = "group-empty";
+      empty.textContent = "No users yet. Add one below — it will be able to sign in right away.";
+      userListEl.appendChild(empty);
+      return;
+    }
+
+    store().users.forEach((u) => {
+      const li = document.createElement("li");
+      li.className = "group-item user-item";
+
+      const displayName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+      const name = document.createElement("span");
+      name.className = "group-name";
+      name.textContent = displayName ? `${displayName} (${u.name})` : u.name;
+      name.title = displayName || u.name;
 
     const role = A.roleOf(u);
     const isMe = u.id === store().currentUserId;
@@ -574,82 +575,151 @@ function renderUsers() {
   });
 }
 
-function openUserEditor(user, li) {
-  if (!A.can("manageUsers")) return;
-  closeEditor();
+  function validateUsername(name) {
+    if (!name) return "Enter a username.";
+    if (/\s/.test(name)) return "Username cannot contain spaces.";
+    if (!/^[A-Za-z0-9._-]+$/.test(name)) return "Username can only use letters, numbers, ., _, -";
+    if (name.length < 3) return "Username must be at least 3 characters.";
+    if (name.length > 11) return "Username must be exactly 11 characters.";
+    return null;
+  }
 
-  const editor = document.createElement("div");
-  editor.className = "perm-editor";
-  editor.id = "permEditor";
+  function openUserEditor(user, li) {
+    if (!A.can("manageUsers")) return;
+    closeEditor();
 
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.value = user.name;
-  nameInput.autocomplete = "off";
+    const editor = document.createElement("div");
+    editor.className = "perm-editor";
+    editor.id = "permEditor";
 
-  const passInput = document.createElement("input");
-  passInput.type = "password";
-  passInput.placeholder = "Leave blank to keep";
-  passInput.autocomplete = "new-password";
+    const firstNameInput = document.createElement("input");
+    firstNameInput.type = "text";
+    firstNameInput.value = user.firstName || "";
+    firstNameInput.autocomplete = "off";
 
-  const top = document.createElement("div");
-  top.className = "perm-editor-row";
-  top.append(field("Name", nameInput), field("New password", passInput));
+    const lastNameInput = document.createElement("input");
+    lastNameInput.type = "text";
+    lastNameInput.value = user.lastName || "";
+    lastNameInput.autocomplete = "off";
 
-  const roleSel = document.createElement("select");
-  store().roles.forEach((r) => {
-    const opt = document.createElement("option");
-    opt.value = r.id;
-    opt.textContent = r.name;
-    roleSel.appendChild(opt);
-  });
-  roleSel.value = user.roleId;
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = user.name;
+    nameInput.autocomplete = "off";
+    nameInput.maxLength = 11;
 
-  const actions = document.createElement("div");
-  actions.className = "perm-editor-actions";
+    const phoneInput = document.createElement("input");
+    phoneInput.type = "tel";
+    phoneInput.value = user.phone || "";
+    phoneInput.autocomplete = "off";
+    phoneInput.inputMode = "numeric";
+    phoneInput.maxLength = 11;
 
-  const saveBtn = miniBtn("Save", "primary");
-  const cancelBtn = miniBtn("Cancel");
+    const passInput = document.createElement("input");
+    passInput.type = "password";
+    passInput.placeholder = "Leave blank to keep";
+    passInput.autocomplete = "new-password";
 
-  saveBtn.addEventListener("click", () => {
-    const name = nameInput.value.trim() || user.name;
-    const clash = store().users.some(
-      (x) => x.id !== user.id && x.name.toLowerCase() === name.toLowerCase()
-    );
-    if (clash) {
-      flash(`Another user is already called "${name}".`);
-      nameInput.focus();
-      return;
-    }
-    if (passInput.value && passInput.value.length < 4) {
-      flash("Password must be at least 4 characters.");
-      passInput.focus();
-      return;
-    }
+    const row1 = document.createElement("div");
+    row1.className = "perm-editor-row";
+    row1.append(field("First name", firstNameInput), field("Last name", lastNameInput));
+
+    const row2 = document.createElement("div");
+    row2.className = "perm-editor-row";
+    row2.append(field("Username", nameInput), field("Phone number", phoneInput));
+
+    const top = document.createElement("div");
+    top.className = "perm-editor-row";
+    top.append(field("New password", passInput));
+
+    const roleSel = document.createElement("select");
+    store().roles.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      roleSel.appendChild(opt);
+    });
+    roleSel.value = user.roleId;
+
+    const actions = document.createElement("div");
+    actions.className = "perm-editor-actions";
+
+    const saveBtn = miniBtn("Save", "primary");
+    const cancelBtn = miniBtn("Cancel");
+
+    saveBtn.addEventListener("click", () => {
+      const rawName = nameInput.value.trim();
+      const err = validateUsername(rawName);
+      if (err) {
+        flash(err);
+        nameInput.focus();
+        return;
+      }
+      const name = rawName;
+      const clash = store().users.some(
+        (x) => x.id !== user.id && x.name.toLowerCase() === name.toLowerCase()
+      );
+      if (clash) {
+        flash(`Another user is already called "${name}".`);
+        nameInput.focus();
+        return;
+      }
+      if (passInput.value && passInput.value.length < 4) {
+        flash("Password must be at least 4 characters.");
+        passInput.focus();
+        return;
+      }
     if (soleAdminGuard(user) && roleSel.value !== user.roleId) {
       flash("This is the only admin — its role can't be changed. Make another user admin first.");
       return;
     }
 
+    const phoneErr = validatePhoneNumber(phoneInput.value.trim());
+    if (phoneErr) {
+      flash(phoneErr);
+      phoneInput.focus();
+      return;
+    }
+
     const wasMe = user.id === store().currentUserId;
+    user.firstName = firstNameInput.value.trim();
+    user.lastName = lastNameInput.value.trim();
     user.name = name;
+    user.phone = phoneInput.value.trim();
     if (passInput.value) user.passwordHash = A.hashPassword(passInput.value);
     user.roleId = roleSel.value;
     persist();
     closeEditor();
     renderUsers();
     renderRoles();
-    flash(`Saved "${user.name}".`);
+    const display = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.name;
+    flash(`Saved "${display}".`);
     if (wasMe) location.reload();
-  });
+    });
 
-  cancelBtn.addEventListener("click", closeEditor);
+    cancelBtn.addEventListener("click", closeEditor);
 
-  actions.append(saveBtn, cancelBtn);
-  editor.append(top, field("Role", roleSel), actions);
-  li.insertAdjacentElement("afterend", editor);
-  nameInput.focus();
-  nameInput.select();
+    nameInput.addEventListener("input", () => {
+      if (/\s/.test(nameInput.value)) {
+        nameInput.value = nameInput.value.replace(/\s/g, "");
+      }
+      if (nameInput.value.length > 11) {
+        nameInput.value = nameInput.value.slice(0, 11);
+      }
+    });
+
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = phoneInput.value.replace(/[^0-9]/g, "");
+      if (phoneInput.value.length > 11) {
+        phoneInput.value = phoneInput.value.slice(0, 11);
+      }
+    });
+
+    actions.append(saveBtn, cancelBtn);
+    editor.append(row1, row2, top, field("Role", roleSel), actions);
+    li.insertAdjacentElement("afterend", editor);
+    firstNameInput.focus();
+    firstNameInput.select();
 }
 
 function deleteUser(user) {
@@ -670,67 +740,199 @@ function deleteUser(user) {
   if (wasMe) location.reload();
 }
 
-function addUser() {
-  if (!A.can("manageUsers")) return;
-  const name = newUserNameEl.value.trim();
-  const password = newUserPasswordEl.value;
-  const roleId = newUserRoleEl.value;
-
-  if (!name) {
-    flash("Enter a name for the new user.");
-    newUserNameEl.focus();
-    return;
-  }
-  if (store().users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
-    flash(`A user named "${name}" already exists.`);
-    newUserNameEl.focus();
-    return;
-  }
-  if (password.length < 4) {
-    flash("Password must be at least 4 characters.");
-    newUserPasswordEl.focus();
-    return;
-  }
-  if (!A.roleById(roleId)) {
-    flash("Pick a role for the new user.");
-    newUserRoleEl.focus();
-    return;
+  function validatePhoneNumber(phone) {
+    if (!phone) return null;
+    if (/\s/.test(phone)) return "Phone number cannot contain spaces.";
+    if (!/^01\d{9}$/.test(phone)) return "Phone number must start with 01 and be 11 digits.";
+    return null;
   }
 
-  store().users.push({
-    id: A.uid(),
-    name,
-    passwordHash: A.hashPassword(password),
-    roleId,
-  });
-  persist();
+  function openAddUserModal() {
+    if (!A.can("manageUsers")) return;
+    closeEditor();
 
-  newUserNameEl.value = "";
-  newUserPasswordEl.value = "";
-  renderUsers();
+    const overlay = document.createElement("div");
+    overlay.className = "modal";
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+
+    const card = document.createElement("div");
+    card.className = "modal-card";
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+
+    const title = document.createElement("h2");
+    title.textContent = "Add user";
+
+    const body = document.createElement("div");
+    body.className = "modal-body";
+
+    const firstNameField = document.createElement("label");
+    firstNameField.className = "modal-field";
+    firstNameField.appendChild(document.createElement("span")).textContent = "First name";
+    const firstNameInput = document.createElement("input");
+    firstNameInput.type = "text";
+    firstNameInput.autocomplete = "off";
+    firstNameField.appendChild(firstNameInput);
+
+    const lastNameField = document.createElement("label");
+    lastNameField.className = "modal-field";
+    lastNameField.appendChild(document.createElement("span")).textContent = "Last name";
+    const lastNameInput = document.createElement("input");
+    lastNameInput.type = "text";
+    lastNameInput.autocomplete = "off";
+    lastNameField.appendChild(lastNameInput);
+
+    const nameField = document.createElement("label");
+    nameField.className = "modal-field";
+    nameField.appendChild(document.createElement("span")).textContent = "Username";
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.autocomplete = "off";
+    nameInput.maxLength = 11;
+    nameField.appendChild(nameInput);
+
+    const phoneField = document.createElement("label");
+    phoneField.className = "modal-field";
+    phoneField.appendChild(document.createElement("span")).textContent = "Phone number (optional)";
+    const phoneInput = document.createElement("input");
+    phoneInput.type = "tel";
+    phoneInput.inputMode = "numeric";
+    phoneInput.autocomplete = "off";
+    phoneInput.maxLength = 11;
+    phoneField.appendChild(phoneInput);
+
+    const passField = document.createElement("label");
+    passField.className = "modal-field";
+    passField.appendChild(document.createElement("span")).textContent = "Password";
+    const passInput = document.createElement("input");
+    passInput.type = "password";
+    passInput.autocomplete = "new-password";
+    passField.appendChild(passInput);
+
+    const roleField = document.createElement("label");
+    roleField.className = "modal-field";
+    roleField.appendChild(document.createElement("span")).textContent = "Role";
+    const roleSel = document.createElement("select");
+    store().roles.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      roleSel.appendChild(opt);
+    });
+    roleField.appendChild(roleSel);
+
+    body.append(firstNameField, lastNameField, nameField, phoneField, passField, roleField);
+
+    const error = document.createElement("p");
+    error.className = "auth-error";
+    body.appendChild(error);
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "btn";
+    cancelBtn.textContent = "Cancel";
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = "btn";
+    submitBtn.textContent = "Save";
+    actions.append(cancelBtn, submitBtn);
+
+    card.append(title, body, actions);
+    overlay.append(backdrop, card);
+    document.body.appendChild(overlay);
+
+    nameInput.addEventListener("input", () => {
+      if (/\s/.test(nameInput.value)) {
+        nameInput.value = nameInput.value.replace(/\s/g, "");
+      }
+      if (nameInput.value.length > 11) {
+        nameInput.value = nameInput.value.slice(0, 11);
+      }
+    });
+
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = phoneInput.value.replace(/[^0-9]/g, "");
+      if (phoneInput.value.length > 11) {
+        phoneInput.value = phoneInput.value.slice(0, 11);
+      }
+    });
+
+    const fail = (msg) => {
+      error.textContent = msg;
+    };
+    const close = () => overlay.remove();
+
+    cancelBtn.addEventListener("click", close);
+    backdrop.addEventListener("click", close);
+    overlay.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+
+    submitBtn.addEventListener("click", () => {
+      error.textContent = "";
+
+      const firstName = firstNameInput.value.trim();
+      const lastName = lastNameInput.value.trim();
+      const rawName = nameInput.value.trim();
+      const phone = phoneInput.value.trim();
+      const password = passInput.value;
+      const roleId = roleSel.value;
+
+      if (!firstName) return fail("Enter a first name.");
+      if (!lastName) return fail("Enter a last name.");
+
+      const nameErr = validateUsername(rawName);
+      if (nameErr) return fail(nameErr);
+      const name = rawName;
+
+      const phoneErr = validatePhoneNumber(phone);
+      if (phoneErr) return fail(phoneErr);
+
+      if (store().users.some((u) => u.name.toLowerCase() === name.toLowerCase())) {
+        return fail(`A user named "${name}" already exists.`);
+      }
+      if (password.length < 4) {
+        return fail("Password must be at least 4 characters.");
+      }
+      if (!A.roleById(roleId)) {
+        return fail("Pick a role for the new user.");
+      }
+
+      store().users.push({
+        id: A.uid(),
+        firstName,
+        lastName,
+        name,
+        phone,
+        passwordHash: A.hashPassword(password),
+        roleId,
+      });
+      persist();
+
+      renderUsers();
+      renderRoles();
+      const display = [firstName, lastName].filter(Boolean).join(" ") || name;
+      flash(`"${display}" can now sign in.`);
+      close();
+    });
+
+    setTimeout(() => firstNameInput.focus(), 50);
+  }
+
+  if (openAddUserBtnEl) {
+    openAddUserBtnEl.addEventListener("click", openAddUserModal);
+  }
+
+  if (newRolePermsEl) {
+    renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
+  }
   renderRoles();
-  flash(`"${name}" can now sign in.`);
-  newUserNameEl.focus();
-}
-
-addUserBtnEl.addEventListener("click", addUser);
-newUserPasswordEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addUser();
-  }
-});
-newUserNameEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    newUserPasswordEl.focus();
-  }
-});
-
-renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
-renderRoles();
-fillRoleSelect();
-renderUsers();
+  fillRoleSelect();
+  renderUsers();
 
 document.addEventListener("minasettings:change", sync);
 
