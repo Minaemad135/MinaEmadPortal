@@ -104,13 +104,13 @@
     btn.addEventListener("click", () => {
       if (settings.theme === "auto") {
         save({ theme: DARK_THEME });
-        return;
-      }
-      if (isDark()) {
+      } else if (isDark()) {
         save({ theme: LIGHT_THEME });
-        return;
+      } else {
+        save({ theme: DARK_THEME });
       }
-      save({ theme: DARK_THEME });
+      if (window.MinaAudit)
+        window.MinaAudit.log("settings.themeToggle", { theme: settings.theme });
     });
 
     document.addEventListener("minasettings:change", update);

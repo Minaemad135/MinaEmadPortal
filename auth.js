@@ -34,6 +34,7 @@
         { key: "manageClasses", label: "Add / rename / delete classes" },
         { key: "manageUsers", label: "Add / edit / delete users" },
         { key: "manageRoles", label: "Create, edit & delete roles" },
+        { key: "viewLogs", label: "View activity logs" },
       ],
     },
     {
@@ -71,6 +72,7 @@
     points: "viewAttendance",
     settings: "viewSettings",
     todo: "viewTodo",
+    logs: "viewLogs",
   };
 
   function hashPassword(text) {
@@ -238,6 +240,7 @@
     if (file === "points.html") return "points";
     if (file === "settings.html") return "settings";
     if (file === "todo.html") return "todo";
+    if (file === "logs.html") return "logs";
     return "home";
   }
 
@@ -341,10 +344,15 @@
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 
-    const fail = (msg) => {
+    const fail = (msg, meta) => {
       error.textContent = msg;
       passInput.value = "";
       passInput.focus();
+      if (window.MinaAudit)
+        window.MinaAudit.log("auth.loginFailed", {
+          msg,
+          ...(meta || {}),
+        });
     };
 
     function validateUsernameAuth(name) {
@@ -362,14 +370,16 @@
       const password = passInput.value;
 
       const nameErr = validateUsernameAuth(rawName);
-      if (nameErr) return fail(nameErr);
+      if (nameErr) return fail(nameErr, { username: rawName });
       const name = rawName;
       if (password.length < 4)
-        return fail("Password must be at least 4 characters.");
+        return fail("Password must be at least 4 characters.", {
+          username: rawName,
+        });
 
       if (isFirst) {
         if (password !== confirmInput.value)
-          return fail("Passwords do not match.");
+          return fail("Passwords do not match.", { username: rawName });
         let adminRole = store.roles.find((r) => r.id === "admin");
         if (!adminRole) {
           adminRole = {
@@ -388,6 +398,11 @@
         store.users.push(user);
         store.currentUserId = user.id;
         save();
+        if (window.MinaAudit)
+          window.MinaAudit.log("auth.firstAdminCreated", {
+            username: name,
+            userId: user.id,
+          });
         location.reload();
         return;
       }
@@ -395,12 +410,14 @@
       const user = store.users.find(
         (u) => u.name.toLowerCase() === name.toLowerCase(),
       );
-      if (!user) return fail(`No account named "${name}".`);
+      if (!user) return fail(`No account named "${name}".`, { username: rawName });
       if (user.passwordHash !== hashPassword(password))
-        return fail("Wrong password.");
+        return fail("Wrong password.", { username: rawName });
 
       store.currentUserId = user.id;
       save();
+      if (window.MinaAudit)
+        window.MinaAudit.log("auth.login", { username: name, userId: user.id });
       location.reload();
     });
 
@@ -479,18 +496,33 @@
       if (!user) return;
       if (password.length < 4) {
         error.textContent = "Password must be at least 4 characters.";
+        if (window.MinaAudit)
+          window.MinaAudit.log("auth.recoveryFailed", {
+            username: user.name,
+            msg: "Password too short",
+          });
         return;
       }
       if (user.passwordHash !== hashPassword(password)) {
         error.textContent = "Wrong password.";
         passInput.value = "";
         passInput.focus();
+        if (window.MinaAudit)
+          window.MinaAudit.log("auth.recoveryFailed", {
+            username: user.name,
+            msg: "Wrong password",
+          });
         return;
       }
       const role = ensureFullAdminRole();
       user.roleId = role.id;
       store.currentUserId = user.id;
       save();
+      if (window.MinaAudit)
+        window.MinaAudit.log("auth.adminRecovery", {
+          username: user.name,
+          userId: user.id,
+        });
       location.reload();
     });
 
@@ -551,7 +583,9 @@
             ? "settings"
             : href.includes("todo")
               ? "todo"
-              : "home";
+              : href.includes("logs")
+                ? "logs"
+                : "home";
       const li = link.closest("li");
       if (li) li.hidden = !can(PAGE_PERM[key]);
     });
@@ -572,8 +606,14 @@
     const logout = el("button", "user-logout", "Log out");
     logout.type = "button";
     logout.addEventListener("click", () => {
+      const u = currentUser();
       store.currentUserId = null;
       save();
+      if (window.MinaAudit)
+        window.MinaAudit.log("auth.logout", {
+          username: u ? u.name : "unknown",
+          userId: u ? u.id : null,
+        });
       location.reload();
     });
     chip.append(top, logout);

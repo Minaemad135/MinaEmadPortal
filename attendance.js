@@ -317,6 +317,15 @@ function cycle(studentId, iso) {
   else g.records[studentId][iso] = next;
 
   save();
+  if (window.MinaAudit) {
+    const st = g.students.find((x) => x.id === studentId);
+    window.MinaAudit.log("attendance.mark", {
+      student: st ? st.name : studentId,
+      date: iso,
+      value: next || "unmarked",
+      class: g.name,
+    });
+  }
   render();
 }
 
@@ -334,6 +343,8 @@ function addStudent() {
   studentInput.value = "";
   studentInput.focus();
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("student.create", { student: name, class: g.name });
   render();
 }
 
@@ -345,6 +356,11 @@ function removeStudent(id) {
   g.students = g.students.filter((x) => x.id !== id);
   delete g.records[id];
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("student.delete", {
+      student: s ? s.name : id,
+      class: g.name,
+    });
   render();
 }
 
@@ -361,9 +377,16 @@ function editStudent(id) {
       { key: "notes", label: "Notes", value: s.notes, type: "textarea", placeholder: "optional" },
     ],
     (v) => {
+      const oldName = s.name;
       s.name = v.name || s.name;
       s.notes = v.notes;
       save();
+      if (window.MinaAudit)
+        window.MinaAudit.log("student.update", {
+          student: s.name,
+          oldName,
+          class: g.name,
+        });
       closeModal();
       render();
     }
@@ -379,6 +402,8 @@ function toggleWeekday(value) {
     g.weekdays = [...g.weekdays, value].sort((a, b) => a - b);
   }
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("class.weekdayToggle", { weekday: value, class: g.name });
   render();
 }
 
@@ -399,6 +424,8 @@ function addSpecialDay() {
   specialDayInput.value = "";
   specialTitleInput.value = "";
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("class.specialDay", { date: value, title, class: g.name });
   render();
 }
 
@@ -407,6 +434,8 @@ function removeSpecialDay(iso) {
   const g = activeGroup();
   g.specialDays = g.specialDays.filter((s) => s.date !== iso);
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("class.specialDayRemove", { date: iso, class: g.name });
   render();
 }
 
@@ -420,6 +449,8 @@ function goToToday() {
   if (now.getFullYear() !== g.year && g.weekdays.includes(now.getDay())) {
     g.year = now.getFullYear();
     save();
+    if (window.MinaAudit)
+      window.MinaAudit.log("class.yearChange", { year: g.year, class: g.name, via: "today" });
   }
 
   if (!visibleColumns(g).includes(today) && allColumns(g).includes(today)) {
@@ -513,6 +544,12 @@ function exportCsv() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  if (window.MinaAudit)
+    window.MinaAudit.log("attendance.exportCsv", {
+      class: g.name,
+      students: students.length,
+      days: cols.length,
+    });
 }
 
 /* ---------- Rendering ---------- */
@@ -1401,6 +1438,8 @@ yearInput.addEventListener("change", () => {
     g.year = year;
     resetRange(g);
     save();
+    if (window.MinaAudit)
+      window.MinaAudit.log("class.yearChange", { year, class: g.name });
     render();
   } else {
     yearInput.value = g.year;
@@ -1412,6 +1451,8 @@ groupSelectEl.addEventListener("change", () => {
   currentPage = 1;
   resetRange(activeGroup());
   save();
+  if (window.MinaAudit)
+    window.MinaAudit.log("class.switch", { class: activeGroup().name });
   render();
 });
 
