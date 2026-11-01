@@ -24,6 +24,8 @@ themeOptions.forEach((btn) =>
   btn.addEventListener("click", () => {
     if (!A.can("changeAppearance")) return;
     S.save({ theme: btn.dataset.theme });
+    if (window.MinaAudit)
+      window.MinaAudit.log("settings.themeChange", { theme: btn.dataset.theme });
     flash(`Theme set to ${btn.querySelector(".option-label").textContent}.`);
   })
 );
@@ -32,6 +34,8 @@ designOptions.forEach((btn) =>
   btn.addEventListener("click", () => {
     if (!A.can("changeAppearance")) return;
     S.save({ design: btn.dataset.design });
+    if (window.MinaAudit)
+      window.MinaAudit.log("settings.designChange", { design: btn.dataset.design });
     flash(`Design set to ${btn.querySelector(".option-label").textContent}.`);
   })
 );
@@ -164,8 +168,11 @@ function startRename(g, nameEl, actions) {
     if (commit) {
       const value = input.value.trim();
       if (value && value !== g.name) {
+        const oldName = g.name;
         g.name = value;
         saveAtt();
+        if (window.MinaAudit)
+          window.MinaAudit.log("class.rename", { from: oldName, to: value });
         flash(`Renamed to "${value}".`);
       }
     }
@@ -196,6 +203,8 @@ function deleteGroup(g) {
   att.groups = att.groups.filter((x) => x.id !== g.id);
   if (att.activeGroup === g.id) att.activeGroup = att.groups.length ? att.groups[0].id : "";
   saveAtt();
+  if (window.MinaAudit)
+    window.MinaAudit.log("class.delete", { name: g.name, students: count });
   renderGroups();
   flash(`"${g.name}" deleted.`);
 }
@@ -212,6 +221,7 @@ function addGroup() {
   if (!att.activeGroup) att.activeGroup = g.id;
   newGroupNameEl.value = "";
   saveAtt();
+  if (window.MinaAudit) window.MinaAudit.log("class.create", { name });
   renderGroups();
   flash(`"${name}" added.`);
   newGroupNameEl.focus();
@@ -436,6 +446,12 @@ function openRoleEditor(role, li) {
     role.name = name;
     role.perms = newPerms;
     persist();
+    if (window.MinaAudit)
+      window.MinaAudit.log("role.update", {
+        roleId: role.id,
+        name,
+        permCount: permCount(newPerms),
+      });
     closeEditor();
     renderRoles();
     renderUsers();
@@ -474,6 +490,8 @@ function deleteRole(role) {
   });
   store().roles = store().roles.filter((r) => r.id !== role.id);
   persist();
+  if (window.MinaAudit)
+    window.MinaAudit.log("role.delete", { roleId: role.id, name: role.name });
   closeEditor();
   renderRoles();
   renderUsers();
@@ -497,6 +515,8 @@ function addRole() {
   const role = { id: A.uid(), name, perms: A.normalizePerms(readPermGroups(newRolePermsEl)) };
   store().roles.push(role);
   persist();
+  if (window.MinaAudit)
+    window.MinaAudit.log("role.create", { roleId: role.id, name });
   newRoleNameEl.value = "";
   renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
   renderRoles();
@@ -682,6 +702,8 @@ newRoleNameEl.addEventListener("keydown", (e) => {
     }
 
     const wasMe = user.id === store().currentUserId;
+    const oldRole = user.roleId;
+    const passwordChanged = !!passInput.value;
     user.firstName = firstNameInput.value.trim();
     user.lastName = lastNameInput.value.trim();
     user.name = name;
@@ -689,6 +711,13 @@ newRoleNameEl.addEventListener("keydown", (e) => {
     if (passInput.value) user.passwordHash = A.hashPassword(passInput.value);
     user.roleId = roleSel.value;
     persist();
+    if (window.MinaAudit)
+      window.MinaAudit.log("user.update", {
+        userId: user.id,
+        username: name,
+        roleChanged: oldRole !== user.roleId,
+        passwordChanged,
+      });
     closeEditor();
     renderUsers();
     renderRoles();
@@ -733,6 +762,8 @@ function deleteUser(user) {
   store().users = store().users.filter((x) => x.id !== user.id);
   if (wasMe) store().currentUserId = null;
   persist();
+  if (window.MinaAudit)
+    window.MinaAudit.log("user.delete", { userId: user.id, username: user.name });
   closeEditor();
   renderUsers();
   renderRoles();
@@ -902,7 +933,7 @@ function deleteUser(user) {
         return fail("Pick a role for the new user.");
       }
 
-      store().users.push({
+      const newUser = {
         id: A.uid(),
         firstName,
         lastName,
@@ -910,8 +941,15 @@ function deleteUser(user) {
         phone,
         passwordHash: A.hashPassword(password),
         roleId,
-      });
+      };
+      store().users.push(newUser);
       persist();
+      if (window.MinaAudit)
+        window.MinaAudit.log("user.create", {
+          userId: newUser.id,
+          username: name,
+          role: (A.roleById(roleId) || {}).name || roleId,
+        });
 
       renderUsers();
       renderRoles();

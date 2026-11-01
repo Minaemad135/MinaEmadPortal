@@ -77,6 +77,8 @@ function addTodo(text) {
   if (!Auth.can("addTodo")) return;
   todos.unshift({ id: Date.now().toString(), text: text.trim(), done: false });
   saveTodos();
+  if (window.MinaAudit)
+    window.MinaAudit.log("todo.create", { text: text.trim().slice(0, 120) });
   render();
 }
 
@@ -85,13 +87,21 @@ function toggleTodo(id) {
   const todo = todos.find((t) => t.id === id);
   if (todo) todo.done = !todo.done;
   saveTodos();
+  if (window.MinaAudit && todo)
+    window.MinaAudit.log("todo.toggle", {
+      text: todo.text.slice(0, 120),
+      done: todo.done,
+    });
   render();
 }
 
 function deleteTodo(id) {
   if (!Auth.can("deleteTodo")) return;
+  const todo = todos.find((t) => t.id === id);
   todos = todos.filter((t) => t.id !== id);
   saveTodos();
+  if (window.MinaAudit && todo)
+    window.MinaAudit.log("todo.delete", { text: todo.text.slice(0, 120) });
   render();
 }
 
@@ -114,8 +124,11 @@ filtersEl.addEventListener("click", (e) => {
 
 clearCompletedBtn.addEventListener("click", () => {
   if (!Auth.can("deleteTodo")) return;
+  const count = todos.filter((t) => t.done).length;
   todos = todos.filter((t) => !t.done);
   saveTodos();
+  if (window.MinaAudit && count)
+    window.MinaAudit.log("todo.clearCompleted", { count });
   render();
 });
 
