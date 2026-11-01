@@ -137,7 +137,7 @@
     if (window.MinaAudit && prev !== safe) {
       const group = attendance.groups.find((g) => g.id === groupId);
       const student = group && group.students.find((s) => s.id === studentId);
-      window.MinaAudit.log("points add", {
+      window.MinaAudit.log("points.set", {
         student: student ? student.name : studentId,
         class: group ? group.name : groupId,
         from: prev,

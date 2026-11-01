@@ -1,21 +1,40 @@
-/* ---------- Audit: activity logging (localStorage + Axiom) ---------- */
+/* ---------- Audit: activity logging (localStorage + Supabase) ---------- */
 
 (function () {
   const STORAGE_KEY = "mina.audit";
   const MAX_ENTRIES = 500;
 
   /*
-   * Axiom setup (free tier: https://axiom.co):
-   *  1. Create a free account and a dataset named "mina-portal"
-   *  2. Create an INGEST-ONLY API token (Axiom UI → Settings → API tokens)
-   *  3. Paste the token below
-   * An ingest-only token can only write, never read — safe-ish for client JS.
+   * Supabase setup (free tier: https://supabase.com — 500MB DB, logs kept forever):
+   *  1. Create a free project at supabase.com
+   *  2. In the SQL editor, run this once:
+   *
+   *     create table if not exists public.audit_log (
+   *       id text primary key,
+   *       ts timestamptz not null,
+   *       user_id text,
+   *       user_name text,
+   *       role_name text,
+   *       action text not null,
+   *       detail jsonb,
+   *       page text
+   *     );
+   *     alter table public.audit_log enable row level security;
+   *     create policy "audit insert only"
+   *       on public.audit_log for insert
+   *       to anon, authenticated
+   *       with check (true);
+   *
+   *  3. Project Settings -> API -> copy Project URL + anon public key below
+   *  4. Set enabled: true
+   * RLS is INSERT-only: clients can write logs but cannot read/update/delete.
    */
-  const AXIOM = {
-    enabled: true, // set to true after pasting your token
-    dataset: "mina-portal",
-    token: "xaat-edac8631-f945-4a85-b0c1-f22b801baa22", // e.g. "AXP-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    endpoint: "https://api.axiom.co/v1/datasets/mina-portal/ingest",
+  const SUPABASE = {
+    enabled: true, // set to true after pasting url + anonKey below
+    url: "https://fcjfyzxtpjdeskjvnqof.supabase.co", // e.g. "https://abcdefg.supabase.co"
+    anonKey:
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjamZ5enh0cGpkZXNranZucW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MTQwODUsImV4cCI6MjEwOTA5MDA4NX0.-v1bbKgsa8mORE1Hh8-VgydcZErnAltMf95hhbrRoF8", // the "anon public" API key
+    table: "audit_log",
   };
 
   function read() {
@@ -63,18 +82,29 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
   }
 
-  function sendToAxiom(entry) {
-    if (!AXIOM.enabled || !AXIOM.token) return;
-    const body = JSON.stringify([entry]);
-    /* keepalive lets the request survive page unload (e.g. logout reload) */
+  function sendToSupabase(entry) {
+    if (!SUPABASE.enabled || !SUPABASE.url || !SUPABASE.anonKey) return;
+    /* map camelCase entry -> snake_case columns */
+    const row = {
+      id: entry.id,
+      ts: entry.ts,
+      user_id: entry.userId,
+      user_name: entry.userName,
+      role_name: entry.role,
+      action: entry.action,
+      detail: entry.detail,
+      page: entry.page,
+    };
     try {
-      fetch(AXIOM.endpoint, {
+      fetch(SUPABASE.url.replace(/\/$/, "") + "/rest/v1/" + SUPABASE.table, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + AXIOM.token,
+          apikey: SUPABASE.anonKey,
+          Authorization: "Bearer " + SUPABASE.anonKey,
+          Prefer: "return=minimal",
         },
-        body,
+        body: JSON.stringify(row),
         keepalive: true,
         mode: "cors",
       }).catch(function () {
@@ -104,7 +134,7 @@
         entries.splice(0, entries.length - MAX_ENTRIES);
       }
       write(entries);
-      sendToAxiom(entry);
+      sendToSupabase(entry);
       return entry;
     } catch (e) {
       /* logging must never break the app */
@@ -145,7 +175,7 @@
     list,
     clear,
     exportJson,
-    config: AXIOM,
+    supabase: SUPABASE,
     MAX_ENTRIES,
   };
 })();
