@@ -41,9 +41,9 @@
       <section class="settings">
         <h1>Activity logs</h1>
         <p class="group-note">
-          Every action by every user on this device — newest first. The last
-          500 entries are kept locally and mirrored to the Supabase database,
-          where they are kept forever.
+          Every action by every user, on every device — newest first. All logs
+          are loaded live from the Supabase database, where they are kept
+          forever.
         </p>
 
         <div class="log-toolbar">
@@ -53,13 +53,18 @@
           <select id="logFilterAction" aria-label="Filter by action">
             <option value="">All actions</option>
           </select>
+          <button type="button" class="btn ghost" id="logRefreshBtn">
+            Refresh
+          </button>
           <button type="button" class="btn ghost" id="logExportBtn">
             Export JSON
           </button>
-          <button type="button" class="btn ghost" id="logClearBtn">
-            Clear logs
+          <button type="button" class="btn" id="logTestBtn">
+            Test Supabase
           </button>
         </div>
+        <p id="logSource" class="log-source">Loading…</p>
+        <p id="logDiag" class="log-diag" hidden></p>
 
         <div class="log-table-wrap">
           <table class="log-table">

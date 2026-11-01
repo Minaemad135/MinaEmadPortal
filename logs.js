@@ -1,16 +1,21 @@
-/* ---------- Activity logs page ---------- */
+/* ---------- Activity logs page (reads from Supabase) ---------- */
 
 (function () {
   const Audit = window.MinaAudit;
-  const Auth = window.MinaAuth;
 
   const logListEl = document.getElementById("logList");
   const logEmptyEl = document.getElementById("logEmpty");
   const logFilterUserEl = document.getElementById("logFilterUser");
   const logFilterActionEl = document.getElementById("logFilterAction");
   const logExportBtnEl = document.getElementById("logExportBtn");
-  const logClearBtnEl = document.getElementById("logClearBtn");
+  const logRefreshBtnEl = document.getElementById("logRefreshBtn");
+  const logTestBtnEl = document.getElementById("logTestBtn");
+  const logSourceEl = document.getElementById("logSource");
+  const logDiagEl = document.getElementById("logDiag");
   const statusEl = document.getElementById("logsStatus");
+
+  /* entries currently loaded from Supabase (newest first) */
+  let entries = [];
 
   function flash(message) {
     if (!statusEl) return;
@@ -37,21 +42,27 @@
     }
   }
 
+  function updateSourceLabel() {
+    if (!logSourceEl) return;
+    logSourceEl.textContent =
+      "Source: Supabase database (" +
+      entries.length +
+      " logs — all devices)";
+  }
+
   function render() {
-    if (!logListEl || !Audit) return;
+    if (!logListEl) return;
     const userFilter = logFilterUserEl ? logFilterUserEl.value : "";
     const actionFilter = logFilterActionEl ? logFilterActionEl.value : "";
 
-    const entries = Audit.list()
-      .slice()
-      .reverse()
+    const filtered = entries
       .filter((e) => !userFilter || e.userName === userFilter)
       .filter((e) => !actionFilter || e.action === actionFilter);
 
     logListEl.innerHTML = "";
-    if (logEmptyEl) logEmptyEl.hidden = entries.length > 0;
+    if (logEmptyEl) logEmptyEl.hidden = filtered.length > 0;
 
-    entries.forEach((e) => {
+    filtered.forEach((e) => {
       const tr = document.createElement("tr");
 
       const time = document.createElement("td");
@@ -79,11 +90,12 @@
       tr.append(time, user, role, action, detail, page);
       logListEl.appendChild(tr);
     });
+
+    updateSourceLabel();
   }
 
   function refreshFilters() {
-    if (!Audit || !logFilterUserEl || !logFilterActionEl) return;
-    const entries = Audit.list();
+    if (!logFilterUserEl || !logFilterActionEl) return;
 
     const users = [...new Set(entries.map((e) => e.userName).filter(Boolean))].sort();
     const actions = [...new Set(entries.map((e) => e.action).filter(Boolean))].sort();
@@ -110,30 +122,65 @@
     logFilterActionEl.value = actions.includes(curAction) ? curAction : "";
   }
 
+  function showDiag(text, isError) {
+    if (!logDiagEl) return;
+    logDiagEl.hidden = !text;
+    logDiagEl.textContent = text || "";
+    logDiagEl.className =
+      "log-diag" + (isError ? " log-diag--error" : " log-diag--ok");
+  }
+
+  function load() {
+    if (!Audit) return Promise.resolve();
+    if (!Audit.supabase || !Audit.supabase.enabled) {
+      entries = [];
+      showDiag("Supabase is disabled in audit.js — logs are unavailable.", true);
+      refreshFilters();
+      render();
+      return Promise.resolve();
+    }
+    return Audit.listRemote(500).then((remote) => {
+      entries = remote;
+      if (remote.length) {
+        showDiag("");
+      } else {
+        showDiag(
+          "Supabase returned 0 logs — either the table is empty or the SELECT RLS policy is missing. Click \"Test Supabase\".",
+          true,
+        );
+      }
+      refreshFilters();
+      render();
+    });
+  }
+
   if (Audit && logListEl) {
-    refreshFilters();
-    render();
+    load();
 
     if (logFilterUserEl) logFilterUserEl.addEventListener("change", render);
     if (logFilterActionEl) logFilterActionEl.addEventListener("change", render);
 
-    if (logExportBtnEl)
-      logExportBtnEl.addEventListener("click", () => {
-        Audit.exportJson();
-        flash("Logs exported.");
+    if (logRefreshBtnEl)
+      logRefreshBtnEl.addEventListener("click", () => {
+        flash("Refreshing…");
+        load().then(() => flash("Loaded from Supabase."));
       });
 
-    if (logClearBtnEl)
-      logClearBtnEl.addEventListener("click", () => {
-        if (Auth && !Auth.can("manageUsers")) return;
-        if (!confirm("Clear all local activity logs?")) return;
-        Audit.clear();
-        Audit.log("logs.cleared", {
-          by: Auth && Auth.currentUser() ? Auth.currentUser().name : "unknown",
+    if (logTestBtnEl)
+      logTestBtnEl.addEventListener("click", () => {
+        logTestBtnEl.disabled = true;
+        showDiag("Testing…", false);
+        Audit.testConnection().then((r) => {
+          logTestBtnEl.disabled = false;
+          showDiag((r.ok ? "✔ " : "✘ [" + r.step + "] ") + r.message, !r.ok);
+          if (r.ok) load();
         });
-        refreshFilters();
-        render();
-        flash("Logs cleared.");
+      });
+
+    if (logExportBtnEl)
+      logExportBtnEl.addEventListener("click", () => {
+        Audit.exportJson(entries);
+        flash("Logs exported.");
       });
   }
 })();
