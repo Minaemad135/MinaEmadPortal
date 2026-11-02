@@ -1,7 +1,8 @@
 /* ---------- Auth: users, roles & permissions ---------- */
 
 (function () {
-  const STORAGE_KEY = "mina.users";
+  const SESSION_KEY = "mina.session";
+  const LEGACY_KEY = "mina.users";
 
   const PERM_GROUPS = [
     {
@@ -130,20 +131,12 @@
 
   function defaultRoles() {
     return [
-      { id: "admin", name: "Admin", perms: permsFromKeys(PRESETS.admin) },
+      { id: uid(), name: "Admin", perms: permsFromKeys(PRESETS.admin) },
     ];
   }
 
-  function read() {
-    let raw = null;
-    try {
-      raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    } catch (e) {
-      raw = null;
-    }
-    if (!raw || !Array.isArray(raw.users)) {
-      return { users: [], roles: defaultRoles(), currentUserId: null };
-    }
+  function normalizeLegacy(raw) {
+    if (!raw || !Array.isArray(raw.users)) return null;
 
     let roles =
       Array.isArray(raw.roles) && raw.roles.length
@@ -187,14 +180,170 @@
     return { users, roles, currentUserId: raw.currentUserId || null };
   }
 
-  let store = read();
-
-  function save() {
+  function readLegacy() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+      return normalizeLegacy(JSON.parse(localStorage.getItem(LEGACY_KEY)));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveSession(userId) {
+    try {
+      if (userId) localStorage.setItem(SESSION_KEY, userId);
+      else localStorage.removeItem(SESSION_KEY);
     } catch (e) {
       /* ignore */
     }
+  }
+
+  function readSession() {
+    try {
+      return localStorage.getItem(SESSION_KEY) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function normalizeRoleRow(r) {
+    return {
+      id: r.id,
+      name: r.name || "Role",
+      perms: migratePerms(r.perms),
+    };
+  }
+
+  function normalizeUserRow(u) {
+    const base = {
+      id: u.id,
+      name: u.name || "User",
+      passwordHash: u.password_hash || "",
+      ...(u.first_name ? { firstName: u.first_name } : {}),
+      ...(u.last_name ? { lastName: u.last_name } : {}),
+      ...(u.phone ? { phone: u.phone } : {}),
+    };
+    if (u.role_id) return { ...base, roleId: u.role_id };
+    return base;
+  }
+
+  let store = {
+    users: [],
+    roles: defaultRoles(),
+    currentUserId: null,
+  };
+
+  function emptyStore() {
+    return { users: [], roles: defaultRoles(), currentUserId: null };
+  }
+
+  function applySession() {
+    const sid = readSession();
+    store.currentUserId =
+      sid && store.users.some((u) => u.id === sid) ? sid : null;
+    if (store.currentUserId) saveSession(store.currentUserId);
+  }
+
+  function migrateLegacyToSupabase(legacy) {
+    const SB = window.MinaSupabase;
+    const roleIds = new Set(store.roles.map((r) => r.id));
+    legacy.roles.forEach((r) => {
+      if (!roleIds.has(r.id)) {
+        store.roles.push(r);
+        roleIds.add(r.id);
+      }
+    });
+    store.users = legacy.users;
+    store.users.forEach((u) => {
+      if (!store.roles.some((r) => r.id === u.roleId))
+        u.roleId = store.roles[0].id;
+    });
+    if (legacy.currentUserId) {
+      store.currentUserId = legacy.currentUserId;
+      saveSession(legacy.currentUserId);
+    }
+    if (!SB || !SB.ready()) return Promise.resolve(store);
+    return saveState().then(
+      function () {
+        try {
+          localStorage.removeItem(LEGACY_KEY);
+        } catch (e) {}
+        console.info(
+          "[MinaAuth] Migrated users/roles from localStorage to Supabase",
+        );
+        return store;
+      },
+      function (err) {
+        console.warn(
+          "[MinaAuth] Migration to Supabase failed, using local data for this session",
+          err,
+        );
+        return store;
+      },
+    );
+  }
+
+  function hydrate() {
+    const SB = window.MinaSupabase;
+
+    if (!SB || !SB.ready()) {
+      const legacy = readLegacy();
+      store = legacy || emptyStore();
+      applySession();
+      if (!legacy)
+        console.warn("[MinaAuth] Supabase not configured — using empty store");
+      return Promise.resolve(store);
+    }
+
+    return Promise.all([SB.get("roles"), SB.get("users")]).then(
+      function (results) {
+        const roleRows = results[0] || [];
+        const userRows = results[1] || [];
+
+        let roles = roleRows.length
+          ? roleRows.map(normalizeRoleRow)
+          : defaultRoles();
+        let users = userRows.map(normalizeUserRow);
+
+        users.forEach((u) => {
+          if (!roles.some((r) => r.id === u.roleId)) u.roleId = roles[0].id;
+        });
+        if (!roles.length) roles = defaultRoles();
+
+        store = { users, roles, currentUserId: null };
+        applySession();
+
+        if (!users.length) {
+          const legacy = readLegacy();
+          if (legacy && legacy.users.length) {
+            store = { users: [], roles: roles, currentUserId: null };
+            return migrateLegacyToSupabase(legacy);
+          }
+        }
+
+        try {
+          localStorage.removeItem(LEGACY_KEY);
+        } catch (e) {}
+
+        return store;
+      },
+      function (err) {
+        console.error(
+          "[MinaAuth] Failed to load users/roles from Supabase " +
+            "(did you run the roles/users SQL?)",
+          err,
+        );
+        const legacy = readLegacy();
+        if (legacy) {
+          console.warn("[MinaAuth] Falling back to localStorage data");
+          store = legacy;
+          applySession();
+          return store;
+        }
+        store = emptyStore();
+        applySession();
+        return store;
+      },
+    );
   }
 
   const currentUser = () =>
@@ -226,12 +375,59 @@
   }
 
   function saveState() {
-    save();
+    const SB = window.MinaSupabase;
+    if (!SB || !SB.ready()) {
+      return Promise.reject(new Error("Supabase is not configured"));
+    }
+
+    const roleRows = store.roles.map((r) => ({
+      id: r.id,
+      name: r.name,
+      perms: r.perms || {},
+    }));
+    const userRows = store.users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      password_hash: u.passwordHash || "",
+      role_id: u.roleId || null,
+      first_name: u.firstName || null,
+      last_name: u.lastName || null,
+      phone: u.phone || null,
+    }));
+
+    const tasks = [];
+    if (roleRows.length) tasks.push(SB.upsert("roles", roleRows));
+    if (userRows.length) tasks.push(SB.upsert("users", userRows));
+
+    return Promise.all(tasks).then(function () {
+      return Promise.all([
+        SB.get("roles").catch(function () {
+          return null;
+        }),
+        SB.get("users").catch(function () {
+          return null;
+        }),
+      ]).then(function (db) {
+        const dels = [];
+        const dbRoles = db[0];
+        const dbUsers = db[1];
+        if (Array.isArray(dbRoles)) {
+          const keep = new Set(store.roles.map((r) => r.id));
+          const dead = dbRoles.filter((r) => !keep.has(r.id)).map((r) => r.id);
+          if (dead.length) dels.push(SB.del("roles", dead));
+        }
+        if (Array.isArray(dbUsers)) {
+          const keep = new Set(store.users.map((u) => u.id));
+          const dead = dbUsers.filter((u) => !keep.has(u.id)).map((u) => u.id);
+          if (dead.length) dels.push(SB.del("users", dead));
+        }
+        return Promise.all(dels);
+      });
+    });
   }
 
   function refresh() {
-    store = read();
-    return store;
+    return hydrate();
   }
 
   function pageKey() {
@@ -247,8 +443,6 @@
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   /* ---------- UI: login / denied / gating ---------- */
-
-  const locked = !currentUser();
 
   function el(tag, cls, text) {
     const node = document.createElement(tag);
@@ -358,7 +552,8 @@
     function validateUsernameAuth(name) {
       if (!name) return "Enter a username.";
       if (/\s/.test(name)) return "Username cannot contain spaces.";
-      if (!/^[A-Za-z0-9._-]+$/.test(name)) return "Username can only use letters, numbers, ., _, -";
+      if (!/^[A-Za-z0-9._-]+$/.test(name))
+        return "Username can only use letters, numbers, ., _, -";
       if (name.length < 3) return "Username must be at least 3 characters.";
       if (name.length > 11) return "Username must be exactly 11 characters.";
       return null;
@@ -380,7 +575,9 @@
       if (isFirst) {
         if (password !== confirmInput.value)
           return fail("Passwords do not match.", { username: rawName });
-        let adminRole = store.roles.find((r) => r.id === "admin");
+        let adminRole =
+          store.roles.find((r) => isAdminPerms(r.perms)) ||
+          store.roles.find((r) => r.name === "Admin");
         if (!adminRole) {
           adminRole = {
             id: uid(),
@@ -397,25 +594,39 @@
         };
         store.users.push(user);
         store.currentUserId = user.id;
-        save();
-        if (window.MinaAudit)
-          window.MinaAudit.log("auth.firstAdminCreated", {
-            username: name,
-            userId: user.id,
-          });
-        location.reload();
+        saveSession(user.id);
+        submit.disabled = true;
+        saveState().then(
+          function () {
+            if (window.MinaAudit)
+              window.MinaAudit.log("auth.firstAdminCreated", {
+                username: name,
+                userId: user.id,
+              });
+            location.reload();
+          },
+          function (err) {
+            submit.disabled = false;
+            fail(
+              "Could not save to Supabase: " +
+                (err && err.message ? err.message : err),
+              { username: rawName },
+            );
+          },
+        );
         return;
       }
 
       const user = store.users.find(
         (u) => u.name.toLowerCase() === name.toLowerCase(),
       );
-      if (!user) return fail(`No account named "${name}".`, { username: rawName });
+      if (!user)
+        return fail(`No account named "${name}".`, { username: rawName });
       if (user.passwordHash !== hashPassword(password))
         return fail("Wrong password.", { username: rawName });
 
       store.currentUserId = user.id;
-      save();
+      saveSession(user.id);
       if (window.MinaAudit)
         window.MinaAudit.log("auth.login", { username: name, userId: user.id });
       location.reload();
@@ -517,13 +728,24 @@
       const role = ensureFullAdminRole();
       user.roleId = role.id;
       store.currentUserId = user.id;
-      save();
-      if (window.MinaAudit)
-        window.MinaAudit.log("auth.adminRecovery", {
-          username: user.name,
-          userId: user.id,
-        });
-      location.reload();
+      saveSession(user.id);
+      submit.disabled = true;
+      saveState().then(
+        function () {
+          if (window.MinaAudit)
+            window.MinaAudit.log("auth.adminRecovery", {
+              username: user.name,
+              userId: user.id,
+            });
+          location.reload();
+        },
+        function (err) {
+          submit.disabled = false;
+          error.textContent =
+            "Could not save to Supabase: " +
+            (err && err.message ? err.message : err);
+        },
+      );
     });
 
     setTimeout(() => passInput.focus(), 50);
@@ -608,7 +830,7 @@
     logout.addEventListener("click", () => {
       const u = currentUser();
       store.currentUserId = null;
-      save();
+      saveSession(null);
       if (window.MinaAudit)
         window.MinaAudit.log("auth.logout", {
           username: u ? u.name : "unknown",
@@ -670,19 +892,33 @@
     });
   }
 
-  const user = currentUser();
-  const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
+  function bootstrap() {
+    const user = currentUser();
+    const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
 
-  if (noAdminsLeft) {
-    buildRecovery();
-  } else if (!user) {
-    buildLogin();
-  } else {
-    renderSidebar();
-    gateDataPerms();
-    if (!can(PAGE_PERM[pageKey()])) buildDenied(user);
+    if (noAdminsLeft) {
+      buildRecovery();
+    } else if (!user) {
+      buildLogin();
+    } else {
+      renderSidebar();
+      gateDataPerms();
+      if (!can(PAGE_PERM[pageKey()])) buildDenied(user);
+    }
+    updateLogos();
   }
-  updateLogos();
+
+  const ready = hydrate().then(
+    function () {
+      bootstrap();
+      return true;
+    },
+    function (err) {
+      console.error("[MinaAuth] hydrate failed", err);
+      bootstrap();
+      return false;
+    },
+  );
 
   window.MinaAuth = {
     PERM_GROUPS,
@@ -705,6 +941,7 @@
     getState,
     saveState,
     refresh,
+    ready,
     gate: (selector, perm) => {
       const allow = can(perm);
       document
@@ -712,6 +949,8 @@
         .forEach((node) => (node.hidden = !allow));
       return allow;
     },
-    isLocked: locked,
+    get isLocked() {
+      return !currentUser();
+    },
   };
 })();

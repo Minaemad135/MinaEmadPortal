@@ -1572,4 +1572,5 @@ currentPage = 1;
 
 resetRange(activeGroup());
 
-render();
+if (Auth.ready) Auth.ready.then(function () { render(); });
+else render();

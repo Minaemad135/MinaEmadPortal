@@ -252,7 +252,14 @@ renderGroups();
   const openAddUserBtnEl = document.getElementById("openAddUserBtn");
 
 function persist() {
-  A.saveState();
+  const p = A.saveState();
+  if (p && typeof p.catch === "function") {
+    p.catch(function (err) {
+      console.error("[settings] save failed", err);
+      flash("Save failed: " + (err && err.message ? err.message : err));
+    });
+  }
+  return p;
 }
 
 function permCount(perms) {
@@ -968,9 +975,15 @@ function deleteUser(user) {
   if (newRolePermsEl) {
     renderPermGroups(newRolePermsEl, A.normalizePerms({}), false);
   }
+
+function initRolesUsers() {
   renderRoles();
   fillRoleSelect();
   renderUsers();
+}
+
+if (A.ready) A.ready.then(initRolesUsers);
+else initRolesUsers();
 
 document.addEventListener("minasettings:change", sync);
 

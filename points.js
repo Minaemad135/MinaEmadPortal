@@ -796,5 +796,6 @@
     }
   });
 
-  bootstrap();
+  if (Auth.ready) Auth.ready.then(function () { bootstrap(); });
+  else bootstrap();
 })();
