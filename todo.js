@@ -132,4 +132,5 @@ clearCompletedBtn.addEventListener("click", () => {
   render();
 });
 
-render();
+if (Auth.ready) Auth.ready.then(render);
+else render();

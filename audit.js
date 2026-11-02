@@ -2,40 +2,13 @@
 
 (function () {
   /*
-   * Supabase setup (free tier: https://supabase.com — 500MB DB, logs kept forever):
-   *  1. Create a free project at supabase.com
-   *  2. In the SQL editor, run this ONCE (complete block):
-   *
-   *     create table if not exists public.audit_log (
-   *       id text primary key,
-   *       ts timestamptz not null,
-   *       user_id text,
-   *       user_name text,
-   *       role_name text,
-   *       action text not null,
-   *       detail jsonb,
-   *       page text
-   *     );
-   *     alter table public.audit_log enable row level security;
-   *     drop policy if exists "audit_select" on public.audit_log;
-   *     drop policy if exists "audit_insert" on public.audit_log;
-   *     create policy "audit_select"
-   *       on public.audit_log for select
-   *       to anon, authenticated using (true);
-   *     create policy "audit_insert"
-   *       on public.audit_log for insert
-   *       to anon, authenticated with check (true);
-   *
-   *  3. Project Settings -> API -> copy Project URL + anon public key below
-   *  4. Set enabled: true
+   * Supabase config lives in supabase.js (shared with auth.js).
+   * Run the SQL from that file's header comment once in the SQL editor.
    */
-  const SUPABASE = {
-    enabled: true, // set to true after pasting url + anonKey below
-    url: "https://fcjfyzxtpjdeskjvnqof.supabase.co",
-    anonKey:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjamZ5enh0cGpkZXNranZucW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MTQwODUsImV4cCI6MjEwOTA5MDA4NX0.-v1bbKgsa8mORE1Hh8-VgydcZErnAltMf95hhbrRoF8",
-    table: "audit_log",
-  };
+  const SUPABASE = window.MinaSupabase
+    ? window.MinaSupabase.config
+    : { enabled: false, url: "", anonKey: "" };
+  const TABLE = "audit_log";
 
   function actorInfo() {
     const auth = window.MinaAuth;
@@ -61,21 +34,15 @@
   }
 
   function supabaseReady() {
-    return !!(SUPABASE.enabled && SUPABASE.url && SUPABASE.anonKey);
+    return !!(window.MinaSupabase && window.MinaSupabase.ready());
   }
 
   function baseUrl() {
-    return SUPABASE.url.replace(/\/$/, "") + "/rest/v1/" + SUPABASE.table;
+    return window.MinaSupabase.rest(TABLE);
   }
 
   function authHeaders(extra) {
-    return Object.assign(
-      {
-        apikey: SUPABASE.anonKey,
-        Authorization: "Bearer " + SUPABASE.anonKey,
-      },
-      extra || {},
-    );
+    return window.MinaSupabase.headers(extra);
   }
 
   function sendToSupabase(entry) {
