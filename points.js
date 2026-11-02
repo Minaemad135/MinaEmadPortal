@@ -24,7 +24,9 @@
   const analysisScopeEl = document.getElementById("analysisScope");
   const analysisStatsEl = document.getElementById("analysisStats");
   const analysisGroupBody = document.getElementById("analysisGroupBody");
-  const analysisDistributionEl = document.getElementById("analysisDistribution");
+  const analysisDistributionEl = document.getElementById(
+    "analysisDistribution",
+  );
   const analysisTopEl = document.getElementById("analysisTop");
   const analysisLeaderBody = document.getElementById("analysisLeaderBody");
 
@@ -35,8 +37,10 @@
   let selectedGroupId = "";
   let analysisGroupId = "all";
 
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const averageText = (value) => (value % 1 ? value.toFixed(1) : String(Math.round(value)));
+  const uid = () =>
+    Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const averageText = (value) =>
+    value % 1 ? value.toFixed(1) : String(Math.round(value));
 
   function studentInitials(name) {
     const words = String(name || "")
@@ -117,16 +121,30 @@
 
   function scoreFor(groupId, studentId) {
     const group = scores[groupId];
-    if (!group || !Object.prototype.hasOwnProperty.call(group, studentId)) return 0;
+    if (!group || !Object.prototype.hasOwnProperty.call(group, studentId))
+      return 0;
     const value = Number(group[studentId]);
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
   }
 
   function setScore(groupId, studentId, value) {
     const safe = Math.max(0, Math.floor(Number(value) || 0));
-    if (!scores[groupId] || typeof scores[groupId] !== "object") scores[groupId] = {};
+    if (!scores[groupId] || typeof scores[groupId] !== "object")
+      scores[groupId] = {};
+    const prev = scoreFor(groupId, studentId);
     scores[groupId][studentId] = safe;
-    return saveScores();
+    const saved = saveScores();
+    if (window.MinaAudit && prev !== safe) {
+      const group = attendance.groups.find((g) => g.id === groupId);
+      const student = group && group.students.find((s) => s.id === studentId);
+      window.MinaAudit.log("points.set", {
+        student: student ? student.name : studentId,
+        class: group ? group.name : groupId,
+        from: prev,
+        to: safe,
+      });
+    }
+    return saved;
   }
 
   function canAward() {
@@ -154,7 +172,9 @@
     });
 
     if (!attendance.groups.some((g) => g.id === selectedGroupId)) {
-      selectedGroupId = attendance.groups.some((g) => g.id === attendance.activeGroup)
+      selectedGroupId = attendance.groups.some(
+        (g) => g.id === attendance.activeGroup,
+      )
         ? attendance.activeGroup
         : attendance.groups[0].id;
     }
@@ -186,7 +206,7 @@
     const group = currentGroup();
     const total = students.reduce(
       (sum, student) => sum + scoreFor(selectedGroupId, student.id),
-      0
+      0,
     );
     const average = students.length ? total / students.length : 0;
     let leader = null;
@@ -202,20 +222,25 @@
 
     statsEl.innerHTML = "";
     statsEl.append(
-      statCard("Students", String(students.length), group ? group.name : "No class selected", false),
+      statCard(
+        "Students",
+        String(students.length),
+        group ? group.name : "No class selected",
+        false,
+      ),
       statCard("Total points", String(total), "Across this class", true),
       statCard(
         "Average",
         students.length ? average.toFixed(average % 1 ? 1 : 0) : "0",
         "Points per student",
-        false
+        false,
       ),
       statCard(
         "Top score",
         String(leader ? topScore : 0),
         leader ? leader.name : "No leader yet",
-        false
-      )
+        false,
+      ),
     );
   }
 
@@ -289,7 +314,9 @@
 
     const total = entries.reduce((sum, entry) => sum + entry.score, 0);
     const withPoints = entries.filter((entry) => entry.score > 0).length;
-    const participation = entries.length ? Math.round((withPoints / entries.length) * 100) : 0;
+    const participation = entries.length
+      ? Math.round((withPoints / entries.length) * 100)
+      : 0;
 
     analysisStatsEl.innerHTML = "";
     analysisStatsEl.append(
@@ -297,22 +324,27 @@
         "Students",
         String(entries.length),
         analysisGroupId === "all" ? "All classes" : "Selected class",
-        false
+        false,
       ),
       statCard(
         "Classes",
         String(groups.length),
         analysisGroupId === "all" ? "In the analysis" : "Current filter",
-        false
+        false,
       ),
-      statCard("With points", String(withPoints), `${participation}% of students`, false),
+      statCard(
+        "With points",
+        String(withPoints),
+        `${participation}% of students`,
+        false,
+      ),
       statCard("Total points", String(total), "Across the selection", true),
       statCard(
         "Average",
         entries.length ? averageText(total / entries.length) : "0",
         "Points per student",
-        false
-      )
+        false,
+      ),
     );
   }
 
@@ -320,7 +352,11 @@
     if (!analysisGroupBody) return;
 
     if (!groups.length) {
-      emptyTableRow(analysisGroupBody, 5, "No classes available to analyse yet.");
+      emptyTableRow(
+        analysisGroupBody,
+        5,
+        "No classes available to analyse yet.",
+      );
       return;
     }
 
@@ -334,7 +370,7 @@
         .slice()
         .sort(
           (a, b) =>
-            b.score - a.score || a.student.name.localeCompare(b.student.name)
+            b.score - a.score || a.student.name.localeCompare(b.student.name),
         )[0];
       return {
         group,
@@ -345,7 +381,9 @@
       };
     });
 
-    rows.sort((a, b) => b.total - a.total || a.group.name.localeCompare(b.group.name));
+    rows.sort(
+      (a, b) => b.total - a.total || a.group.name.localeCompare(b.group.name),
+    );
 
     analysisGroupBody.innerHTML = "";
     rows.forEach((row) => {
@@ -357,8 +395,8 @@
         tableCell(averageText(row.average)),
         tableCell(
           row.top ? `${row.top.student.name} · ${row.top.score} pts` : "—",
-          "analysis-top-cell"
-        )
+          "analysis-top-cell",
+        ),
       );
       analysisGroupBody.appendChild(tr);
     });
@@ -385,7 +423,7 @@
     ];
 
     const counts = tiers.map(
-      (tier) => entries.filter((entry) => tier.test(entry.score)).length
+      (tier) => entries.filter((entry) => tier.test(entry.score)).length,
     );
     const max = Math.max(1, ...counts);
 
@@ -441,7 +479,7 @@
         (a, b) =>
           b.score - a.score ||
           a.student.name.localeCompare(b.student.name) ||
-          a.group.name.localeCompare(b.group.name)
+          a.group.name.localeCompare(b.group.name),
       )
       .slice(0, 3);
 
@@ -486,7 +524,7 @@
         (a, b) =>
           b.score - a.score ||
           a.student.name.localeCompare(b.student.name) ||
-          a.group.name.localeCompare(b.group.name)
+          a.group.name.localeCompare(b.group.name),
       );
 
     analysisLeaderBody.innerHTML = "";
@@ -495,7 +533,8 @@
 
       const rankCell = document.createElement("td");
       const rank = document.createElement("span");
-      rank.className = "analysis-rank" + (index < 3 ? " analysis-rank--top" : "");
+      rank.className =
+        "analysis-rank" + (index < 3 ? " analysis-rank--top" : "");
       rank.textContent = String(index + 1);
       rankCell.appendChild(rank);
 
@@ -504,7 +543,7 @@
         tableCell(entry.student.name, "analysis-student-name"),
         tableCell(entry.group.name),
         tableCell(entry.student.code || "—"),
-        tableCell(`${entry.score} pts`, "analysis-points")
+        tableCell(`${entry.score} pts`, "analysis-points"),
       );
       analysisLeaderBody.appendChild(tr);
     });
@@ -538,7 +577,8 @@
     button.textContent = symbol;
     button.disabled = disabled;
     button.setAttribute("aria-label", label);
-    button.title = disabled && action === "dec" ? "Points cannot go below 0" : label;
+    button.title =
+      disabled && action === "dec" ? "Points cannot go below 0" : label;
     button.dataset.studentName = studentName;
     return button;
   }
@@ -556,7 +596,10 @@
     const minus = row.querySelector('[data-action="dec"]');
     if (minus) {
       minus.disabled = !canAward() || score <= 0;
-      minus.title = score <= 0 ? "Points cannot go below 0" : `Remove one point from ${student.name}`;
+      minus.title =
+        score <= 0
+          ? "Points cannot go below 0"
+          : `Remove one point from ${student.name}`;
     }
   }
 
@@ -589,7 +632,9 @@
 
       const meta = document.createElement("div");
       meta.className = "points-meta";
-      meta.textContent = student.code ? `Code ${student.code}` : "No student code";
+      meta.textContent = student.code
+        ? `Code ${student.code}`
+        : "No student code";
 
       personText.append(name, meta);
       person.append(avatar, personText);
@@ -612,7 +657,7 @@
         `Remove one point from ${student.name}`,
         "\u2212",
         !awardable || score <= 0,
-        student.name
+        student.name,
       );
       if (score <= 0) minus.title = "Points cannot go below 0";
 
@@ -621,9 +666,10 @@
         `Add one point to ${student.name}`,
         "+",
         !awardable,
-        student.name
+        student.name,
       );
-      if (!awardable) plus.title = "You do not have permission to change points";
+      if (!awardable)
+        plus.title = "You do not have permission to change points";
 
       controls.append(minus, plus);
       row.append(person, scoreBox, controls);
@@ -634,7 +680,10 @@
   function showStatus(message) {
     statusEl.textContent = message;
     window.clearTimeout(showStatus.timer);
-    showStatus.timer = window.setTimeout(() => (statusEl.textContent = ""), 2400);
+    showStatus.timer = window.setTimeout(
+      () => (statusEl.textContent = ""),
+      2400,
+    );
   }
 
   function setTab(name) {
@@ -713,7 +762,9 @@
     const group = currentGroup();
     if (!row || !group) return;
 
-    const student = group.students.find((item) => item.id === row.dataset.studentId);
+    const student = group.students.find(
+      (item) => item.id === row.dataset.studentId,
+    );
     if (!student) return;
 
     if (!canAward()) {
@@ -722,7 +773,8 @@
     }
 
     const current = scoreFor(selectedGroupId, student.id);
-    const next = button.dataset.action === "inc" ? current + 1 : Math.max(0, current - 1);
+    const next =
+      button.dataset.action === "inc" ? current + 1 : Math.max(0, current - 1);
     if (next === current) return;
 
     if (!setScore(selectedGroupId, student.id, next)) {
@@ -733,7 +785,9 @@
     updateRow(row, next, student);
     renderStats(group.students);
     renderAnalysis();
-    showStatus(`${student.name} now has ${next} point${next === 1 ? "" : "s"}.`);
+    showStatus(
+      `${student.name} now has ${next} point${next === 1 ? "" : "s"}.`,
+    );
   });
 
   window.addEventListener("storage", (event) => {

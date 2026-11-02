@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Activity Logs | MinaEmad</title>
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="auth.css" />
+    <link rel="stylesheet" href="attendance.css" />
+    <link rel="stylesheet" href="logs.css" />
+  </head>
+  <body>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+      &#9776;
+    </button>
+
+    <nav class="sidebar" id="siteNav">
+      <a href="index.html" class="logo"
+        ><span class="logo-mark">M</span
+        ><span class="logo-text">MinaEmad</span></a
+      >
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="attendance.html">Attendance</a></li>
+        <li><a href="points.html">Points</a></li>
+        <li><a href="todo.html">Todo</a></li>
+        <li><a href="logs.html" class="active">Logs</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button
+          class="theme-toggle"
+          id="themeToggle"
+          aria-label="Toggle dark mode"
+        ></button>
+      </div>
+    </nav>
+
+    <main>
+      <section class="settings">
+        <h1>Activity logs</h1>
+        <p class="group-note">
+          Every action by every user, on every device — newest first. All logs
+          are loaded live from the Supabase database, where they are kept
+          forever.
+        </p>
+
+        <div class="log-toolbar">
+          <select id="logFilterUser" aria-label="Filter by user">
+            <option value="">All users</option>
+          </select>
+          <select id="logFilterAction" aria-label="Filter by action">
+            <option value="">All actions</option>
+          </select>
+          <button type="button" class="btn ghost" id="logRefreshBtn">
+            Refresh
+          </button>
+          <button type="button" class="btn ghost" id="logExportBtn">
+            Export JSON
+          </button>
+          <button type="button" class="btn" id="logTestBtn">
+            Test Supabase
+          </button>
+        </div>
+        <p id="logSource" class="log-source">Loading…</p>
+        <p id="logDiag" class="log-diag" hidden></p>
+
+        <div class="log-table-wrap">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>Page</th>
+              </tr>
+            </thead>
+            <tbody id="logList"></tbody>
+          </table>
+        </div>
+        <p id="logEmpty" class="group-empty">No activity recorded yet.</p>
+
+        <p id="logsStatus" class="status" role="status"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p><a href="index.html">&larr; Back to portfolio</a></p>
+    </footer>
+
+    <script src="sidebar.js"></script>
+    <script src="auth.js"></script>
+    <script src="audit.js"></script>
+    <script src="logs.js"></script>
+  </body>
+</html>
