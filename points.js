@@ -3,7 +3,13 @@
 (function () {
   const ATT_KEY = "mina.attendance";
   const POINTS_KEY = "mina.points";
-  const Auth = window.MinaAuth || { can: () => true };
+  /* meta = {classId: {studentId: {at: iso, by: username}}} */
+  const POINTS_META_KEY = "mina.points.meta";
+  const LEGACY_TS_KEY = "mina.points.ts";
+  const Auth = window.MinaAuth || {
+    can: () => true,
+    ready: Promise.resolve(),
+  };
 
   const groupSelect = document.getElementById("pointsGroup");
   const refreshBtn = document.getElementById("pointsRefresh");
@@ -76,6 +82,8 @@
   }
 
   function loadAttendance() {
+    if (window.MinaClasses && window.MinaClasses.load)
+      return window.MinaClasses.load();
     try {
       const raw = JSON.parse(localStorage.getItem(ATT_KEY));
       if (raw && typeof raw === "object") {
@@ -106,13 +114,210 @@
     }
   }
 
-  function saveScores() {
+  function loadScoreMeta() {
     try {
-      localStorage.setItem(POINTS_KEY, JSON.stringify(scores));
+      const raw = JSON.parse(localStorage.getItem(POINTS_META_KEY));
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+      const out = {};
+      Object.keys(raw).forEach(function (groupId) {
+        const byClass = raw[groupId];
+        if (!byClass || typeof byClass !== "object" || Array.isArray(byClass))
+          return;
+        out[groupId] = byClass;
+      });
+      return out;
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function scoreEntry(meta, groupId, studentId) {
+    const entry = meta[groupId] && meta[groupId][studentId];
+    return entry && typeof entry === "object" ? entry : null;
+  }
+
+  function cacheScores() {
+    try {
+      const next = JSON.stringify(scores);
+      if (localStorage.getItem(POINTS_KEY) !== next)
+        localStorage.setItem(POINTS_KEY, next);
       return true;
     } catch (e) {
       return false;
     }
+  }
+
+  function cacheAll(nextScores, nextMeta) {
+    try {
+      const next = JSON.stringify(nextScores);
+      if (localStorage.getItem(POINTS_KEY) !== next)
+        localStorage.setItem(POINTS_KEY, next);
+      const meta = JSON.stringify(nextMeta);
+      if (localStorage.getItem(POINTS_META_KEY) !== meta)
+        localStorage.setItem(POINTS_META_KEY, meta);
+      localStorage.removeItem(LEGACY_TS_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function currentUsername() {
+    const user =
+      typeof Auth.currentUser === "function" ? Auth.currentUser() : null;
+    return user ? user.name || null : null;
+  }
+
+  function studentName(groupId, studentId) {
+    const group = attendance.groups.find((g) => g.id === groupId);
+    const student = group && group.students.find((s) => s.id === studentId);
+    return student ? student.name : null;
+  }
+
+  function stampScore(groupId, studentId) {
+    const entry = { at: new Date().toISOString(), by: currentUsername() };
+    try {
+      const meta = loadScoreMeta();
+      if (!meta[groupId] || typeof meta[groupId] !== "object")
+        meta[groupId] = {};
+      meta[groupId][studentId] = entry;
+      localStorage.setItem(POINTS_META_KEY, JSON.stringify(meta));
+    } catch (e) {
+      /* ignore */
+    }
+    return entry;
+  }
+
+  function supabaseReady() {
+    const SB = window.MinaSupabase;
+    return !!(SB && SB.ready && SB.ready());
+  }
+
+  /* Merge Supabase rows (one per student) with the local copy: the newer
+     side wins per student (row.updated_at vs the local stamp), local-only
+     scores and roster name fixes are pushed up, and on fetch failure the
+     local copy is used as-is. */
+  function fetchScores() {
+    const local = loadScores();
+    const meta = loadScoreMeta();
+    if (!supabaseReady()) return Promise.resolve(local);
+
+    return window.MinaSupabase.get("points").then(
+      function (rows) {
+        const merged = {};
+        const nextMeta = {};
+        const push = [];
+        const seen = {};
+
+        function bucket(groupId) {
+          if (!merged[groupId]) merged[groupId] = {};
+          if (!nextMeta[groupId]) nextMeta[groupId] = {};
+          return merged[groupId];
+        }
+
+        (rows || []).forEach(function (row) {
+          if (!row || !row.id || !row.class_id) return;
+          const groupId = row.class_id;
+          const studentId = row.id;
+          seen[groupId + "\u0000" + studentId] = true;
+
+          const remotePoints = Math.max(0, Math.floor(Number(row.points) || 0));
+          const remoteTime = Date.parse(row.updated_at || "") || 0;
+          const localGroup = local[groupId] || {};
+          const hasLocal = Object.prototype.hasOwnProperty.call(
+            localGroup,
+            studentId,
+          );
+          const entry = scoreEntry(meta, groupId, studentId);
+          const localTime = entry && entry.at ? Date.parse(entry.at) || 0 : 0;
+          const name = studentName(groupId, studentId);
+
+          if (hasLocal && localTime > remoteTime) {
+            bucket(groupId)[studentId] = localGroup[studentId];
+            nextMeta[groupId][studentId] = entry;
+            push.push({
+              id: studentId,
+              class_id: groupId,
+              student_name: name || row.student_name || null,
+              points: localGroup[studentId],
+              set_by: entry.by || row.set_by || null,
+              updated_at: entry.at || row.updated_at,
+            });
+          } else {
+            bucket(groupId)[studentId] = remotePoints;
+            nextMeta[groupId][studentId] = {
+              at: row.updated_at || "",
+              by: row.set_by || null,
+            };
+            if (name && name !== row.student_name) {
+              push.push({
+                id: studentId,
+                class_id: groupId,
+                student_name: name,
+                points: remotePoints,
+                set_by: row.set_by || null,
+                updated_at: row.updated_at,
+              });
+            }
+          }
+        });
+
+        Object.keys(local).forEach(function (groupId) {
+          const group = local[groupId];
+          if (!group || typeof group !== "object") return;
+          Object.keys(group).forEach(function (studentId) {
+            if (seen[groupId + "\u0000" + studentId]) return;
+            const entry = scoreEntry(meta, groupId, studentId) || {};
+            bucket(groupId)[studentId] = group[studentId];
+            const at = entry.at || new Date().toISOString();
+            nextMeta[groupId][studentId] = { at: at, by: entry.by || null };
+            push.push({
+              id: studentId,
+              class_id: groupId,
+              student_name: studentName(groupId, studentId),
+              points: group[studentId],
+              set_by: entry.by || null,
+              updated_at: at,
+            });
+          });
+        });
+
+        if (push.length) {
+          window.MinaSupabase.upsert("points", push).catch(function (err) {
+            console.error("[points] could not push local scores", err);
+          });
+        }
+
+        cacheAll(merged, nextMeta);
+        return merged;
+      },
+      function (err) {
+        console.error("[points] could not load scores from Supabase", err);
+        return local;
+      },
+    );
+  }
+
+  function persistScores(groupId, studentId) {
+    if (!supabaseReady()) return Promise.resolve(true);
+    const entry = scoreEntry(loadScoreMeta(), groupId, studentId) || {};
+    const group = scores[groupId] || {};
+    const row = {
+      id: studentId,
+      class_id: groupId,
+      student_name: studentName(groupId, studentId),
+      points: Math.max(0, Math.floor(Number(group[studentId]) || 0)),
+      set_by: entry.by || currentUsername(),
+      updated_at: entry.at || new Date().toISOString(),
+    };
+    return window.MinaSupabase.upsert("points", [row]).then(
+      function () {
+        return true;
+      },
+      function (err) {
+        console.error("[points] could not save scores to Supabase", err);
+        return false;
+      },
+    );
   }
 
   function currentGroup() {
@@ -133,7 +338,8 @@
       scores[groupId] = {};
     const prev = scoreFor(groupId, studentId);
     scores[groupId][studentId] = safe;
-    const saved = saveScores();
+    const saved = cacheScores();
+    if (saved) stampScore(groupId, studentId);
     if (window.MinaAudit && prev !== safe) {
       const group = attendance.groups.find((g) => g.id === groupId);
       const student = group && group.students.find((s) => s.id === studentId);
@@ -724,14 +930,16 @@
 
   function bootstrap(message) {
     attendance = loadAttendance();
-    scores = loadScores();
+    fetchScores().then(function (remote) {
+      scores = remote;
 
-    renderGroupSelect();
-    renderAnalysisGroupSelect();
-    render();
-    renderAnalysis();
+      renderGroupSelect();
+      renderAnalysisGroupSelect();
+      render();
+      renderAnalysis();
 
-    if (message) showStatus(message);
+      if (message) showStatus(message);
+    });
   }
 
   tabButtons.forEach((button) => {
@@ -788,14 +996,34 @@
     showStatus(
       `${student.name} now has ${next} point${next === 1 ? "" : "s"}.`,
     );
+    persistScores(selectedGroupId, student.id).then(function (ok) {
+      if (!ok)
+        showStatus(
+          "Saved in this browser only — the database could not be reached.",
+        );
+    });
   });
 
   window.addEventListener("storage", (event) => {
-    if (event.key === ATT_KEY || event.key === POINTS_KEY) {
+    if (
+      event.key === ATT_KEY ||
+      event.key === POINTS_KEY ||
+      event.key === POINTS_META_KEY
+    ) {
       bootstrap();
     }
   });
 
-  if (Auth.ready) Auth.ready.then(function () { bootstrap(); });
+  const readyList = [];
+  if (Auth.ready && typeof Auth.ready.then === "function")
+    readyList.push(Auth.ready);
+  if (
+    window.MinaClasses &&
+    window.MinaClasses.ready &&
+    typeof window.MinaClasses.ready.then === "function"
+  )
+    readyList.push(window.MinaClasses.ready);
+
+  if (readyList.length) Promise.all(readyList).then(function () { bootstrap(); });
   else bootstrap();
 })();

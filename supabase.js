@@ -50,6 +50,63 @@
  *       on public.users for all
  *       to anon, authenticated using (true) with check (true);
  *
+ *     create table if not exists public.todos (
+ *       id text primary key,
+ *       user_id text not null,
+ *       text text not null,
+ *       done boolean not null default false,
+ *       created_at timestamptz not null default now()
+ *     );
+ *     create index if not exists todos_user_id_idx on public.todos (user_id);
+ *     alter table public.todos enable row level security;
+ *     drop policy if exists "todos_all" on public.todos;
+ *     create policy "todos_all"
+ *       on public.todos for all
+ *       to anon, authenticated using (true) with check (true);
+ *
+ *     create table if not exists public.classes (
+ *       id text primary key,
+ *       name text not null,
+ *       year int not null,
+ *       weekdays jsonb not null default '[5]'::jsonb,
+ *       special_days jsonb not null default '[]'::jsonb,
+ *       records jsonb not null default '{}'::jsonb
+ *     );
+ *     create table if not exists public.students (
+ *       id text primary key,
+ *       class_id text not null,
+ *       name text not null,
+ *       code text,
+ *       notes text,
+ *       position int not null default 0
+ *     );
+ *     create index if not exists students_class_id_idx on public.students (class_id);
+ *     alter table public.classes enable row level security;
+ *     alter table public.students enable row level security;
+ *     drop policy if exists "classes_all" on public.classes;
+ *     drop policy if exists "students_all" on public.students;
+ *     create policy "classes_all"
+ *       on public.classes for all
+ *       to anon, authenticated using (true) with check (true);
+ *     create policy "students_all"
+ *       on public.students for all
+ *       to anon, authenticated using (true) with check (true);
+ *
+ *     create table if not exists public.points (
+ *       id text primary key,                  -- student id
+ *       class_id text,
+ *       student_name text,
+ *       points int not null default 0,
+ *       set_by text,                           -- username of the user who set them
+ *       updated_at timestamptz not null default now()
+ *     );
+ *     create index if not exists points_class_id_idx on public.points (class_id);
+ *     alter table public.points enable row level security;
+ *     drop policy if exists "points_all" on public.points;
+ *     create policy "points_all"
+ *       on public.points for all
+ *       to anon, authenticated using (true) with check (true);
+ *
  *  3. Project Settings -> API -> copy Project URL + anon public key below
  *  4. Set enabled: true
  *
@@ -112,10 +169,13 @@
     }).then(function (res) {
       return res.text().then(function (t) {
         if (!res.ok) throw fail("GET", table, res.status, t);
+        if (!t) return [];
         try {
-          return t ? JSON.parse(t) : [];
+          return JSON.parse(t);
         } catch (e) {
-          return [];
+          throw new Error(
+            "GET " + table + " returned invalid JSON (status " + res.status + ")",
+          );
         }
       });
     });
@@ -162,6 +222,26 @@
     return post(table, rows, { upsert: true, onConflict: "id" });
   }
 
+  function patch(table, id, values) {
+    if (!ready()) return Promise.reject(new Error("Supabase not configured"));
+    return fetch(rest(table) + "?id=eq." + encodeURIComponent(id), {
+      method: "PATCH",
+      headers: headers({
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      }),
+      body: JSON.stringify(values),
+      mode: "cors",
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw fail("PATCH", table, res.status, t);
+        });
+      }
+      return null;
+    });
+  }
+
   function del(table, ids) {
     if (!ready()) return Promise.reject(new Error("Supabase not configured"));
     if (!ids || !ids.length) return Promise.resolve(null);
@@ -192,6 +272,7 @@
     get: get,
     post: post,
     upsert: upsert,
+    patch: patch,
     del: del,
   };
 })();

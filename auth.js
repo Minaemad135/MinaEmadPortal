@@ -3,6 +3,7 @@
 (function () {
   const SESSION_KEY = "mina.session";
   const LEGACY_KEY = "mina.users";
+  const CACHE_KEY = "mina.cache";
 
   const PERM_GROUPS = [
     {
@@ -232,8 +233,36 @@
     currentUserId: null,
   };
 
+  /* "loading" -> still fetching, "ok" -> server answered,
+     "error"  -> fetch failed (offline / server unreachable) */
+  let loadState = "loading";
+
   function emptyStore() {
     return { users: [], roles: defaultRoles(), currentUserId: null };
+  }
+
+  function readCache() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (!raw || !Array.isArray(raw.users) || !raw.users.length) return null;
+      const cached = normalizeLegacy(raw);
+      if (cached && cached.users.length) return cached;
+    } catch (e) {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function writeCache() {
+    if (!store.users.length) return;
+    try {
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ users: store.users, roles: store.roles }),
+      );
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function applySession() {
@@ -289,6 +318,7 @@
       const legacy = readLegacy();
       store = legacy || emptyStore();
       applySession();
+      loadState = "ok";
       if (!legacy)
         console.warn("[MinaAuth] Supabase not configured — using empty store");
       return Promise.resolve(store);
@@ -311,6 +341,7 @@
 
         store = { users, roles, currentUserId: null };
         applySession();
+        loadState = "ok";
 
         if (!users.length) {
           const legacy = readLegacy();
@@ -324,14 +355,23 @@
           localStorage.removeItem(LEGACY_KEY);
         } catch (e) {}
 
+        writeCache();
         return store;
       },
       function (err) {
+        loadState = "error";
         console.error(
           "[MinaAuth] Failed to load users/roles from Supabase " +
             "(did you run the roles/users SQL?)",
           err,
         );
+        const cache = readCache();
+        if (cache) {
+          console.warn("[MinaAuth] Offline — using cached users/roles");
+          store = cache;
+          applySession();
+          return store;
+        }
         const legacy = readLegacy();
         if (legacy) {
           console.warn("[MinaAuth] Falling back to localStorage data");
@@ -400,6 +440,7 @@
     if (userRows.length) tasks.push(SB.upsert("users", userRows));
 
     return Promise.all(tasks).then(function () {
+      writeCache();
       return Promise.all([
         SB.get("roles").catch(function () {
           return null;
@@ -451,8 +492,56 @@
     return node;
   }
 
+  function buildLoading() {
+    if (!currentUser())
+      document
+        .querySelectorAll(".nav-links li")
+        .forEach((li) => (li.hidden = true));
+
+    const box = el("div", "page-loading");
+    box.id = "authLoading";
+    box.setAttribute("role", "status");
+    box.append(
+      el("div", "auth-spinner"),
+      el("p", "page-loading-text", "Loading accounts and roles…"),
+    );
+    document.body.appendChild(box);
+  }
+
+  function removeLoading() {
+    const node = document.getElementById("authLoading");
+    if (node) node.remove();
+  }
+
+  function buildOffline() {
+    document.body.classList.add("auth-locked");
+
+    const overlay = el("div", "auth-overlay");
+    overlay.id = "authOffline";
+
+    const card = el("div", "auth-card auth-card-static");
+    const retry = el("button", "btn auth-submit", "Try again");
+    retry.type = "button";
+    retry.addEventListener("click", () => location.reload());
+
+    card.append(
+      el("div", "auth-logo", "!"),
+      el("h2", null, "Connection problem"),
+      el(
+        "p",
+        "auth-sub",
+        "We could not reach the server to load accounts, so the sign-in page cannot be shown yet. Check your internet connection and try again.",
+      ),
+      retry,
+    );
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  }
+
   function buildLogin() {
-    const isFirst = store.users.length === 0;
+    const isFirst = loadState === "ok" && store.users.length === 0;
+    const offline = loadState === "error";
 
     const overlay = el("div", "auth-overlay");
     overlay.id = "authOverlay";
@@ -469,7 +558,11 @@
     const sub = el(
       "p",
       "auth-sub",
-      isFirst ? "This account gets every permission." : "",
+      isFirst
+        ? "This account gets every permission."
+        : offline
+          ? "Could not reach the server — signing in with saved accounts."
+          : "",
     );
 
     const nameField = el("label", "auth-field");
@@ -795,6 +888,8 @@
     const siteNav = document.getElementById("siteNav");
     if (!siteNav) return;
 
+    siteNav.querySelectorAll(".user-chip").forEach((chip) => chip.remove());
+
     siteNav.querySelectorAll(".nav-links a").forEach((link) => {
       const href = (link.getAttribute("href") || "").toLowerCase();
       const key = href.includes("attendance")
@@ -894,7 +989,16 @@
 
   function bootstrap() {
     const user = currentUser();
-    const noAdminsLeft = store.users.length > 0 && adminCount() === 0;
+
+    if (loadState === "error" && !store.users.length) {
+      buildOffline();
+      updateLogos();
+      removeLoading();
+      return;
+    }
+
+    const noAdminsLeft =
+      loadState === "ok" && store.users.length > 0 && adminCount() === 0;
 
     if (noAdminsLeft) {
       buildRecovery();
@@ -905,6 +1009,20 @@
       gateDataPerms();
       if (!can(PAGE_PERM[pageKey()])) buildDenied(user);
     }
+    updateLogos();
+    removeLoading();
+  }
+
+  const bootCache = readCache();
+  if (bootCache) {
+    store = bootCache;
+    applySession();
+  }
+
+  buildLoading();
+
+  if (currentUser()) {
+    renderSidebar();
     updateLogos();
   }
 
