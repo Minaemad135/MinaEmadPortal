@@ -1,5 +1,9 @@
-const STORAGE_KEY = "portfolio.todos";
-const Auth = window.MinaAuth || { can: () => true };
+const Auth = window.MinaAuth || {
+  can: () => true,
+  ready: Promise.resolve(),
+  currentUser: () => null,
+};
+const SB = window.MinaSupabase;
 
 const form = document.getElementById("todoForm");
 const input = document.getElementById("todoInput");
@@ -11,19 +15,109 @@ const clearCompletedBtn = document.getElementById("clearCompleted");
 const menuToggle = document.getElementById("menuToggle");
 const siteNav = document.getElementById("siteNav");
 
-let todos = loadTodos();
+const LEGACY_KEY = "portfolio.todos";
+
+let todos = [];
 let currentFilter = "all";
 
-function loadTodos() {
+function currentUserId() {
+  const u = Auth.currentUser ? Auth.currentUser() : null;
+  return u ? u.id : null;
+}
+
+function supabaseReady() {
+  return !!(SB && SB.ready && SB.ready());
+}
+
+function mapRow(r) {
+  return {
+    id: r.id,
+    text: r.text || "",
+    done: !!r.done,
+    userId: r.user_id,
+    createdAt: r.created_at || null,
+  };
+}
+
+function toRow(t) {
+  return {
+    id: t.id,
+    user_id: t.userId || currentUserId(),
+    text: t.text,
+    done: !!t.done,
+    created_at: t.createdAt || new Date().toISOString(),
+  };
+}
+
+function uid() {
+  return (
+    Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+  );
+}
+
+function readLegacyTodos() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
+    const raw = JSON.parse(localStorage.getItem(LEGACY_KEY));
+    return Array.isArray(raw) ? raw : [];
+  } catch (e) {
     return [];
   }
 }
 
-function saveTodos() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+function clearLegacy() {
+  try {
+    localStorage.removeItem(LEGACY_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+function loadTodos() {
+  const me = currentUserId();
+  if (!me) return Promise.resolve([]);
+
+  if (!supabaseReady()) {
+    return Promise.resolve(readLegacyTodos());
+  }
+
+  return SB.get("todos", {
+    user_id: "eq." + me,
+    select: "*",
+    order: "created_at.desc",
+  }).then(
+    function (rows) {
+      const list = (rows || []).map(mapRow);
+      if (list.length) {
+        clearLegacy();
+        return list;
+      }
+      const legacy = readLegacyTodos();
+      if (!legacy.length) return [];
+      const seeded = legacy.map((t) => ({
+        id: t.id || uid(),
+        text: t.text || "",
+        done: !!t.done,
+        userId: me,
+        createdAt: new Date().toISOString(),
+      }));
+      return SB.upsert(
+        "todos",
+        seeded.map(toRow),
+      ).then(
+        function () {
+          clearLegacy();
+          return seeded;
+        },
+        function () {
+          return seeded;
+        },
+      );
+    },
+    function (err) {
+      console.error("[todo] load failed", err);
+      return readLegacyTodos();
+    },
+  );
 }
 
 function getVisibleTodos() {
@@ -75,34 +169,64 @@ function render() {
 
 function addTodo(text) {
   if (!Auth.can("addTodo")) return;
-  todos.unshift({ id: Date.now().toString(), text: text.trim(), done: false });
-  saveTodos();
-  if (window.MinaAudit)
-    window.MinaAudit.log("todo.create", { text: text.trim().slice(0, 120) });
+  const me = currentUserId();
+  if (!me) return;
+  const todo = {
+    id: uid(),
+    text: text.trim(),
+    done: false,
+    userId: me,
+    createdAt: new Date().toISOString(),
+  };
+  todos.unshift(todo);
   render();
+  if (supabaseReady()) {
+    SB.post("todos", toRow(todo), { minimal: true }).catch(function (err) {
+      console.error("[todo] add failed", err);
+      todos = todos.filter((t) => t.id !== todo.id);
+      render();
+    });
+  }
+  if (window.MinaAudit)
+    window.MinaAudit.log("todo.create", { text: todo.text.slice(0, 120) });
 }
 
 function toggleTodo(id) {
   if (!Auth.can("completeTodo")) return;
   const todo = todos.find((t) => t.id === id);
-  if (todo) todo.done = !todo.done;
-  saveTodos();
-  if (window.MinaAudit && todo)
+  if (!todo) return;
+  todo.done = !todo.done;
+  render();
+  if (supabaseReady()) {
+    SB.patch("todos", id, { done: todo.done }).catch(function (err) {
+      console.error("[todo] toggle failed", err);
+      todo.done = !todo.done;
+      render();
+    });
+  }
+  if (window.MinaAudit)
     window.MinaAudit.log("todo.toggle", {
       text: todo.text.slice(0, 120),
       done: todo.done,
     });
-  render();
 }
 
 function deleteTodo(id) {
   if (!Auth.can("deleteTodo")) return;
   const todo = todos.find((t) => t.id === id);
   todos = todos.filter((t) => t.id !== id);
-  saveTodos();
+  render();
+  if (supabaseReady()) {
+    SB.del("todos", [id]).catch(function (err) {
+      console.error("[todo] delete failed", err);
+      if (todo) {
+        todos.unshift(todo);
+        render();
+      }
+    });
+  }
   if (window.MinaAudit && todo)
     window.MinaAudit.log("todo.delete", { text: todo.text.slice(0, 120) });
-  render();
 }
 
 form.addEventListener("submit", (e) => {
@@ -118,19 +242,43 @@ filtersEl.addEventListener("click", (e) => {
   const btn = e.target.closest(".filter");
   if (!btn) return;
   currentFilter = btn.dataset.filter;
-  filtersEl.querySelectorAll(".filter").forEach((b) => b.classList.toggle("active", b === btn));
+  filtersEl
+    .querySelectorAll(".filter")
+    .forEach((b) => b.classList.toggle("active", b === btn));
   render();
 });
 
 clearCompletedBtn.addEventListener("click", () => {
   if (!Auth.can("deleteTodo")) return;
-  const count = todos.filter((t) => t.done).length;
+  const done = todos.filter((t) => t.done);
+  if (!done.length) return;
+  const ids = done.map((t) => t.id);
   todos = todos.filter((t) => !t.done);
-  saveTodos();
-  if (window.MinaAudit && count)
-    window.MinaAudit.log("todo.clearCompleted", { count });
   render();
+  if (supabaseReady()) {
+    SB.del("todos", ids).catch(function (err) {
+      console.error("[todo] clear failed", err);
+    });
+  }
+  if (window.MinaAudit)
+    window.MinaAudit.log("todo.clearCompleted", { count: ids.length });
 });
 
-if (Auth.ready) Auth.ready.then(render);
-else render();
+const authReady =
+  Auth && Auth.ready && typeof Auth.ready.then === "function"
+    ? Auth.ready
+    : Promise.resolve();
+
+authReady
+  .then(function () {
+    return loadTodos();
+  })
+  .then(function (list) {
+    todos = Array.isArray(list) ? list : [];
+    render();
+  })
+  .catch(function (err) {
+    console.error("[todo] init failed", err);
+    todos = [];
+    render();
+  });

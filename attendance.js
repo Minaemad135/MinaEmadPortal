@@ -1,5 +1,6 @@
 const STORAGE_KEY = "mina.attendance";
-const Auth = window.MinaAuth || { can: () => true };
+const Auth = window.MinaAuth || { can: () => true, ready: Promise.resolve() };
+const Classes = window.MinaClasses;
 
 const yearInput = document.getElementById("attYear");
 const groupSelectEl = document.getElementById("groupSelect");
@@ -140,6 +141,7 @@ function migrate(saved) {
 }
 
 function load() {
+  if (Classes && Classes.load) return Classes.load();
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && typeof saved === "object") return migrate(saved);
@@ -189,11 +191,16 @@ function ensureCodes() {
 
 let state = load();
 
-if (ensureCodes()) save();
-
-const activeGroup = () => state.groups.find((g) => g.id === state.activeGroup) || state.groups[0];
+const activeGroup = () =>
+  state.groups.find((g) => g.id === state.activeGroup) || state.groups[0];
 
 function save() {
+  if (Classes) {
+    if (!Classes.hydrated) return Promise.resolve();
+    return Classes.save(state).catch(function (err) {
+      console.error("[attendance] save failed", err);
+    });
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -1557,20 +1564,38 @@ if (rangePresetsEl) {
 
 /* ---------- Init ---------- */
 
-buildWeekdays();
-buildMonths();
+function initAttendance() {
+  state = load();
+  if (!state.groups.length) {
+    const g = normGroup({});
+    state = { activeGroup: g.id, groups: [g] };
+    if (Classes && Classes.setState) Classes.setState(state);
+  }
+  if (ensureCodes()) save();
 
-filterMonth = String(new Date().getMonth());
-filterType = "all";
-filterStudent = "";
-filterMonthEl.value = filterMonth;
-syncFilterType();
-filterStudentEl.value = "";
-pageSize = 10;
-pageSizeEl.value = "10";
-currentPage = 1;
+  buildWeekdays();
+  buildMonths();
 
-resetRange(activeGroup());
+  filterMonth = String(new Date().getMonth());
+  filterType = "all";
+  filterStudent = "";
+  filterMonthEl.value = filterMonth;
+  syncFilterType();
+  filterStudentEl.value = "";
+  pageSize = 10;
+  pageSizeEl.value = "10";
+  currentPage = 1;
 
-if (Auth.ready) Auth.ready.then(function () { render(); });
-else render();
+  resetRange(activeGroup());
+
+  if (Auth.ready) Auth.ready.then(function () { render(); });
+  else render();
+}
+
+const readyList = [];
+if (Auth.ready && typeof Auth.ready.then === "function") readyList.push(Auth.ready);
+if (Classes && Classes.ready && typeof Classes.ready.then === "function")
+  readyList.push(Classes.ready);
+
+if (readyList.length) Promise.all(readyList).then(initAttendance);
+else initAttendance();

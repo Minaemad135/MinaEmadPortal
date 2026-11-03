@@ -43,6 +43,7 @@ designOptions.forEach((btn) =>
 /* ---------- Classes / groups (shared with the Attendance page) ---------- */
 
 const ATT_KEY = "mina.attendance";
+const Classes = window.MinaClasses;
 const groupListEl = document.getElementById("groupList");
 const newGroupNameEl = document.getElementById("newGroupName");
 const addGroupBtnEl = document.getElementById("addGroupBtn");
@@ -62,6 +63,7 @@ function normGroup(g) {
 }
 
 function loadAtt() {
+  if (Classes && Classes.load) return Classes.load();
   try {
     const raw = JSON.parse(localStorage.getItem(ATT_KEY));
     if (raw && Array.isArray(raw.groups)) {
@@ -82,6 +84,13 @@ function loadAtt() {
 let att = loadAtt();
 
 function saveAtt() {
+  if (Classes) {
+    if (!Classes.hydrated) return Promise.resolve();
+    return Classes.save(att).catch(function (err) {
+      console.error("[settings] save failed", err);
+      flash("Save failed: " + (err && err.message ? err.message : err));
+    });
+  }
   try {
     localStorage.setItem(ATT_KEY, JSON.stringify(att));
   } catch (e) {
@@ -235,7 +244,14 @@ newGroupNameEl.addEventListener("keydown", (e) => {
   }
 });
 
-renderGroups();
+function initClassesUI() {
+  att = loadAtt();
+  renderGroups();
+}
+
+if (Classes && Classes.ready && typeof Classes.ready.then === "function")
+  Classes.ready.then(initClassesUI);
+else initClassesUI();
 
 /* ---------- Roles & users ---------- */
 
